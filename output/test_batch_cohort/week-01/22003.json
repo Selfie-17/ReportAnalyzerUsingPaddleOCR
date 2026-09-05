@@ -1,0 +1,135 @@
+{
+  "student_id": "22003",
+  "week_id": "week-01",
+  "source": {
+    "filename": "observation.pdf",
+    "num_pages": 1
+  },
+  "ocr": {
+    "status": "success",
+    "text": "## Level 1: Compulsory Programs\n\n### 1. Check whether a given number is even or odd\n\nFunctions / Concepts Used:\n\nInteger variable, scanf(), printf(), modulus operator (%), equality operator (==), if-else Explanation:\n\n• Reads an integer using scanf().\n\n• Checks number % 2 == 0 using the modulus operator.\n\n• if-else prints \"Even\" or \"Odd\" accordingly.\n\n✓ Program successfully executed.\n\n### 2. Check whether a given number is positive, negative, or zero\n\nFunctions / Concepts Used:\n\nVariables, relational operators (>, <, ==), if-else-if ladder\n\nExplanation:\n\n• Reads a number into a variable.\n\n• Compares it with 0 using >, <, == in an if-else-if ladder.\n\n• Prints Positive. Negative. or Zero based on the match.\n\n✓ Program successfully executed.\n\n### 3. Check whether a character is uppercase, lowercase, digit, or special character\n\nFunctions / Concepts Used:\n\nchar data type, character input, relational operators, logical AND (&&, else-if ladder\n\nExplanation:\n\n• Reads a character using the char data type.\n\n• Uses relational operators with && to check A-Z, a-z, 0-9 ranges.\n\n• else-if ladder prints the matching category.\n\n✓ Program successfully executed.\n\n### 4. Check whether a given year is a leap year\n\nFunctions / Concepts Used:\n\nInteger variable, modulus operator (%), relational and logical operators, nested conditions Explanation:\n\n• Reads the year as an integer.\n\n• Checks divisibility by 4, 100, 400 using % and nested conditions.\n\n• Prints Leap Year or Not a Leap Year based on the rule.\n\n✓ Program successfully executed.\n\n### 5. Print the memory allocation for all data types in C\n\nFunctions / Concepts Used:\n\nData types, printf(), format specifiers, sizeof operator\n\nExplanation:\n\n• Declares variables of int, char, float, double, etc.\n\n• Uses sizeof() to get bytes occupied by each type.\n\n• printf() with format specifiers displays each size.\n\n✓ Program successfully executed.\n\n## Level 2: Medium Programs\n\n### 1. Menu-based arithmetic program using switch\n\nFunctions / Concepts Used:",
+    "num_pages": 1,
+    "page_breakdown": [
+      {
+        "page": 1,
+        "text": "## Level 1: Compulsory Programs\n\n### 1. Check whether a given number is even or odd\n\nFunctions / Concepts Used:\n\nInteger variable, scanf(), printf(), modulus operator (%), equality operator (==), if-else Explanation:\n\n• Reads an integer using scanf().\n\n• Checks number % 2 == 0 using the modulus operator.\n\n• if-else prints \"Even\" or \"Odd\" accordingly.\n\n✓ Program successfully executed.\n\n### 2. Check whether a given number is positive, negative, or zero\n\nFunctions / Concepts Used:\n\nVariables, relational operators (>, <, ==), if-else-if ladder\n\nExplanation:\n\n• Reads a number into a variable.\n\n• Compares it with 0 using >, <, == in an if-else-if ladder.\n\n• Prints Positive. Negative. or Zero based on the match.\n\n✓ Program successfully executed.\n\n### 3. Check whether a character is uppercase, lowercase, digit, or special character\n\nFunctions / Concepts Used:\n\nchar data type, character input, relational operators, logical AND (&&, else-if ladder\n\nExplanation:\n\n• Reads a character using the char data type.\n\n• Uses relational operators with && to check A-Z, a-z, 0-9 ranges.\n\n• else-if ladder prints the matching category.\n\n✓ Program successfully executed.\n\n### 4. Check whether a given year is a leap year\n\nFunctions / Concepts Used:\n\nInteger variable, modulus operator (%), relational and logical operators, nested conditions Explanation:\n\n• Reads the year as an integer.\n\n• Checks divisibility by 4, 100, 400 using % and nested conditions.\n\n• Prints Leap Year or Not a Leap Year based on the rule.\n\n✓ Program successfully executed.\n\n### 5. Print the memory allocation for all data types in C\n\nFunctions / Concepts Used:\n\nData types, printf(), format specifiers, sizeof operator\n\nExplanation:\n\n• Declares variables of int, char, float, double, etc.\n\n• Uses sizeof() to get bytes occupied by each type.\n\n• printf() with format specifiers displays each size.\n\n✓ Program successfully executed.\n\n## Level 2: Medium Programs\n\n### 1. Menu-based arithmetic program using switch\n\nFunctions / Concepts Used:"
+      }
+    ],
+    "device": "gpu:0",
+    "paddle_version": "3.3.0",
+    "total_time": 196.74187450000318,
+    "error": null
+  },
+  "extraction": {
+    "status": "success",
+    "objective_of_lab": null,
+    "programs": {
+      "P1": {
+        "status": "detected",
+        "source_pages": [
+          1
+        ],
+        "problem_understanding": "Check whether a given number is even or odd",
+        "logic_approach": "• Reads an integer using scanf().\n• Checks number % 2 == 0 using the modulus operator.\n• if-else prints \"Even\" or \"Odd\" accordingly.",
+        "important_variables": [],
+        "what_i_observed": "✓ Program successfully executed."
+      },
+      "P2": {
+        "status": "detected",
+        "source_pages": [
+          1
+        ],
+        "problem_understanding": "Check whether a given number is positive, negative, or zero",
+        "logic_approach": "• Reads a number into a variable.\n• Compares it with 0 using >, <, == in an if-else-if ladder.\n• Prints Positive. Negative. or Zero based on the match.",
+        "important_variables": [],
+        "what_i_observed": "✓ Program successfully executed."
+      },
+      "P3": {
+        "status": "detected",
+        "source_pages": [
+          1
+        ],
+        "problem_understanding": "Check whether a character is uppercase, lowercase, digit, or special character",
+        "logic_approach": "• Reads a character using the char data type.\n• Uses relational operators with && to check A-Z, a-z, 0-9 ranges.\n• else-if ladder prints the matching category.",
+        "important_variables": [],
+        "what_i_observed": "✓ Program successfully executed."
+      },
+      "P4": {
+        "status": "detected",
+        "source_pages": [
+          1
+        ],
+        "problem_understanding": "Check whether a given year is a leap year",
+        "logic_approach": "• Reads the year as an integer.\n• Checks divisibility by 4, 100, 400 using % and nested conditions.\n• Prints Leap Year or Not a Leap Year based on the rule.",
+        "important_variables": [],
+        "what_i_observed": "✓ Program successfully executed."
+      },
+      "P5": {
+        "status": "detected",
+        "source_pages": [
+          1
+        ],
+        "problem_understanding": "Print the memory allocation for all data types in C",
+        "logic_approach": "• Declares variables of int, char, float, double, etc.\n• Uses sizeof() to get bytes occupied by each type.\n• printf() with format specifiers displays each size.",
+        "important_variables": [],
+        "what_i_observed": "✓ Program successfully executed."
+      },
+      "P6": {
+        "status": "not_detected",
+        "source_pages": [],
+        "problem_understanding": null,
+        "logic_approach": null,
+        "important_variables": [],
+        "what_i_observed": null
+      },
+      "P7": {
+        "status": "not_detected",
+        "source_pages": [],
+        "problem_understanding": null,
+        "logic_approach": null,
+        "important_variables": [],
+        "what_i_observed": null
+      },
+      "P8": {
+        "status": "not_detected",
+        "source_pages": [],
+        "problem_understanding": null,
+        "logic_approach": null,
+        "important_variables": [],
+        "what_i_observed": null
+      },
+      "P9": {
+        "status": "not_detected",
+        "source_pages": [],
+        "problem_understanding": null,
+        "logic_approach": null,
+        "important_variables": [],
+        "what_i_observed": null
+      },
+      "P10": {
+        "status": "not_detected",
+        "source_pages": [],
+        "problem_understanding": null,
+        "logic_approach": null,
+        "important_variables": [],
+        "what_i_observed": null
+      }
+    },
+    "detected_programs": [
+      "P1",
+      "P2",
+      "P3",
+      "P4",
+      "P5"
+    ],
+    "missing_programs": [
+      "P6",
+      "P7",
+      "P8",
+      "P9",
+      "P10"
+    ],
+    "errors": []
+  },
+  "created_at": "2026-09-03T21:51:47.616858"
+}

@@ -1,0 +1,23 @@
+{
+  "week_id": "week-01",
+  "section_id": "SEC1",
+  "status": "failed",
+  "total_students": 1,
+  "successful": 0,
+  "failed": 1,
+  "pending": 0,
+  "students": [
+    {
+      "student_id": "Zip files",
+      "section_id": "SEC1",
+      "status": "failed",
+      "stage": "discovery",
+      "output": "Zip files.json",
+      "error": "Ambiguous: found multiple report files: week1report.pdf, report_week_1.pdf, Report.pdf, report.pdf",
+      "time_taken": 0.0,
+      "ocr_status": "failed",
+      "extraction_status": null
+    }
+  ],
+  "generated_at": "2026-09-05T00:28:20.707010"
+}

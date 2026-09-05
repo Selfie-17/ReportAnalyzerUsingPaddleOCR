@@ -1,0 +1,111 @@
+{
+  "status": "success",
+  "objective_of_lab": null,
+  "programs": {
+    "P1": {
+      "status": "detected",
+      "source_pages": [
+        1
+      ],
+      "problem_understanding": "Reads an integer using scanf() and checks if it is even or odd using the modulus operator.",
+      "logic_approach": "Uses if-else to print 'Even' or 'Odd'.",
+      "important_variables": [],
+      "what_i_observed": "Program successfully executed."
+    },
+    "P2": {
+      "status": "detected",
+      "source_pages": [
+        1
+      ],
+      "problem_understanding": "Reads a number and checks if it is positive, negative, or zero using relational operators.",
+      "logic_approach": "Uses if-else-if ladder to determine the category.",
+      "important_variables": [],
+      "what_i_observed": "Program successfully executed."
+    },
+    "P3": {
+      "status": "detected",
+      "source_pages": [
+        1
+      ],
+      "problem_understanding": "Reads a character and checks if it is uppercase, lowercase, digit, or special character using relational operators and logical AND.",
+      "logic_approach": "Uses else-if ladder to determine the category.",
+      "important_variables": [],
+      "what_i_observed": "Program successfully executed."
+    },
+    "P4": {
+      "status": "detected",
+      "source_pages": [
+        1
+      ],
+      "problem_understanding": "Reads a year and checks if it is a leap year using divisibility rules.",
+      "logic_approach": "Uses nested conditions to determine leap year status.",
+      "important_variables": [],
+      "what_i_observed": "Program successfully executed."
+    },
+    "P5": {
+      "status": "detected",
+      "source_pages": [
+        1
+      ],
+      "problem_understanding": "Declares variables of different data types and prints their memory allocation using sizeof() and printf().",
+      "logic_approach": "Uses sizeof() and printf() to display sizes.",
+      "important_variables": [],
+      "what_i_observed": "Program successfully executed."
+    },
+    "P6": {
+      "status": "not_detected",
+      "source_pages": [],
+      "problem_understanding": null,
+      "logic_approach": null,
+      "important_variables": [],
+      "what_i_observed": null
+    },
+    "P7": {
+      "status": "not_detected",
+      "source_pages": [],
+      "problem_understanding": null,
+      "logic_approach": null,
+      "important_variables": [],
+      "what_i_observed": null
+    },
+    "P8": {
+      "status": "not_detected",
+      "source_pages": [],
+      "problem_understanding": null,
+      "logic_approach": null,
+      "important_variables": [],
+      "what_i_observed": null
+    },
+    "P9": {
+      "status": "not_detected",
+      "source_pages": [],
+      "problem_understanding": null,
+      "logic_approach": null,
+      "important_variables": [],
+      "what_i_observed": null
+    },
+    "P10": {
+      "status": "not_detected",
+      "source_pages": [],
+      "problem_understanding": null,
+      "logic_approach": null,
+      "important_variables": [],
+      "what_i_observed": null
+    }
+  },
+  "detected_programs": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5"
+  ],
+  "missing_programs": [
+    "P6",
+    "P7",
+    "P8",
+    "P9",
+    "P10"
+  ],
+  "errors": []
+}

@@ -1,0 +1,11 @@
+{
+  "student_id": "Zip files",
+  "section_id": "SEC1",
+  "week_id": "week-01",
+  "status": "failed",
+  "error": {
+    "stage": "discovery",
+    "message": "Ambiguous: found multiple report files: week1report.pdf, report_week_1.pdf, Report.pdf, report.pdf"
+  },
+  "created_at": "2026-09-04T14:23:56.883661"
+}
