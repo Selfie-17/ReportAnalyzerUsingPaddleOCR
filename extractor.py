@@ -19,14 +19,19 @@ Your sole job is to parse the student's laboratory observation report OCR text a
 CRITICAL EXTRACTION RULES (STRICT NON-HALLUCINATION POLICY):
 1. EXTRACT WHAT IS ACTUALLY THERE: Extract only the content present in the OCR text. Do NOT improve, rewrite, infer, summarize with outside knowledge, or invent academic explanations.
 2. MISSING CONTENT MUST BE NULL: If a section (Objective, Problem Understanding, Logic/Approach, What I Observed) is not present or cannot be read, you MUST set its value to null. NEVER invent observations (e.g., do NOT invent "I observed the program executed successfully" if not written).
-3. VARIABLES: If no variables table or list is present for a program, return an empty array [].
-4. PROGRAM IDENTIFICATION:
-   - Identify programs from headings like: "P1", "Program 1", "Problem 1", "1.", "1)", "Question 1", "Level 1: 1.", etc.
-   - Map programs to keys "P1" through "P10".
+3. VARIABLES: If no variables table or list is present for a program, return an empty array []. Never infer or invent variable names or purposes.
+4. NO GROUPED TEXT DUPLICATION:
+   - If the student's report groups programs into levels or lists (e.g., "Level 1: Even/odd, positive/negative...", "Level 2...", "Level 3..."), do NOT duplicate or copy that level summary into multiple programs.
+   - Each program must contain only standalone, program-specific explanation written specifically for that program.
+   - If a program is merely mentioned in a list or grouped title without its own individual explanation, mark it with "status": "not_detected" and set its fields to null.
+5. PROGRAM IDENTIFICATION:
+   - Identify programs from headings like: "P1", "Program 1", "Problem 1", "1.", "1)", "Question 1", etc.
+   - Do NOT treat "Level 1" or "Level 2" as "Program 1" or "Program 2".
+   - Map programs to canonical keys "P1" through "PN".
    - If a program (e.g. P4) is NOT present in the OCR text, mark it with "status": "not_detected" and null fields.
-   - If a program IS present, mark it with "status": "detected".
-   - DO NOT fabricate missing programs simply to complete P1-P10.
-5. OBJECTIVE: Extract the single overall lab objective into "objective_of_lab". If missing, set to null.
+   - If a program IS present with its own section, mark it with "status": "detected".
+   - DO NOT fabricate missing programs simply to complete the assigned list.
+6. OBJECTIVE: Extract the single overall lab objective into "objective_of_lab". If missing, set to null.
 
 JSON OUTPUT STRUCTURE SCHEMA:
 {
@@ -252,8 +257,15 @@ def extract_observation_report(
                 errors=[f"Initial validation failed: {parse_err}", f"Retry request failed: {r_error}"]
             )
 
+    expected_count = None
+    if assigned_questions and assigned_questions.strip():
+        from verifier import parse_assigned_questions
+        parsed_q = parse_assigned_questions(assigned_questions)
+        if parsed_q:
+            expected_count = len(parsed_q)
+
     # Build Pydantic ExtractionResult
-    result = _build_extraction_result(parsed_dict)
+    result = _build_extraction_result(parsed_dict, expected_count=expected_count)
 
     # Assign source pages using reliable OCR page breakdown
     if page_breakdown:
@@ -279,7 +291,7 @@ def _parse_and_validate_json(raw_content: str) -> Tuple[Optional[Dict[str, Any]]
     return data, None
 
 
-def _build_extraction_result(data: Dict[str, Any]) -> ExtractionResult:
+def _build_extraction_result(data: Dict[str, Any], expected_count: Optional[int] = None) -> ExtractionResult:
     """Normalizes raw dictionary into validated ExtractionResult."""
     objective = data.get("objective_of_lab")
     if objective is not None:
@@ -297,7 +309,7 @@ def _build_extraction_result(data: Dict[str, Any]) -> ExtractionResult:
 
     # Collect any programs under aliases (e.g. "Program 1" -> "P1")
     normalized_incoming: Dict[str, Dict[str, Any]] = {}
-    max_prog_num = 10
+    max_prog_num = expected_count if expected_count is not None else 10
     for k, v in raw_programs.items():
         if not isinstance(v, dict):
             continue
@@ -308,7 +320,7 @@ def _build_extraction_result(data: Dict[str, Any]) -> ExtractionResult:
             std_key = f"P{p_num}"
             normalized_incoming[std_key] = v
 
-    # Ensure canonical keys cover at least P1..P10, or up to the highest program number found (e.g. P1..P13)
+    # Ensure canonical keys cover all expected programs (e.g. P1..P3, P1..P10, P1..P13)
     canonical_keys = [f"P{i}" for i in range(1, max_prog_num + 1)]
 
     for key in canonical_keys:
@@ -360,6 +372,40 @@ def _build_extraction_result(data: Dict[str, Any]) -> ExtractionResult:
             important_variables=clean_vars,
             what_i_observed=_clean_str(item.get("what_i_observed"))
         )
+
+    # Cross-Program Deduplication Guardrail:
+    # Detects and neutralizes grouped descriptions (e.g. Level-1, Level-2) copied across multiple programs
+    text_usage: Dict[str, List[Tuple[str, str]]] = {}
+    for p_key, p_detail in programs.items():
+        if p_detail.status != "detected":
+            continue
+        for field_name in ("problem_understanding", "logic_approach", "what_i_observed"):
+            val = getattr(p_detail, field_name)
+            if val and len(val.strip()) > 20:
+                norm_val = re.sub(r"\s+", " ", val.strip().lower())
+                text_usage.setdefault(norm_val, []).append((p_key, field_name))
+
+    for norm_text, occurrences in text_usage.items():
+        if len(occurrences) > 1:
+            for p_key, field_name in occurrences:
+                setattr(programs[p_key], field_name, None)
+            for p_key, _ in occurrences:
+                p_obj = programs[p_key]
+                has_substance = any([
+                    p_obj.problem_understanding,
+                    p_obj.logic_approach,
+                    p_obj.what_i_observed,
+                    p_obj.important_variables
+                ])
+                if not has_substance:
+                    p_obj.status = "not_detected"
+                    if p_key in detected:
+                        detected.remove(p_key)
+                    if p_key not in missing:
+                        missing.append(p_key)
+
+    detected.sort(key=lambda x: int(re.search(r'\d+', x).group(0)) if re.search(r'\d+', x) else 0)
+    missing.sort(key=lambda x: int(re.search(r'\d+', x).group(0)) if re.search(r'\d+', x) else 0)
 
     overall_status = "success" if detected else ("partial" if objective else "failed")
 

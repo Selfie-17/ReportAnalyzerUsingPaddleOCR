@@ -73,51 +73,76 @@ def test_default_manual_questions_preset():
     assert "Program 5: Fibonacci Series" in DEFAULT_MANUAL_QUESTIONS_PRESET
 
 
+
 @patch("verifier.requests.post")
 def test_stream_observation_verification(mock_post):
     mock_resp = MagicMock()
     mock_resp.raise_for_status = MagicMock()
-    # Simulate streaming response lines
-    mock_resp.iter_lines.return_value = [
-        json.dumps({"message": {"content": "# Observation Report Verification Report\n"}}).encode("utf-8"),
-        json.dumps({"message": {"content": "## Overall Evaluation\n- Total Score: 9.0 / 10.0"}}).encode("utf-8"),
-    ]
+    mock_resp.json.return_value = {
+        "message": {
+            "content": json.dumps({
+                "objective": None,
+                "questions": [
+                    {
+                        "question_number": 1,
+                        "question_text": "Factors",
+                        "match_status": "FOUND_AND_COVERED",
+                        "requirements": [
+                            {"requirement": "Problem Understanding", "status": "PRESENT", "evidence": "Find factors of n", "confidence": "HIGH"}
+                        ]
+                    }
+                ]
+            })
+        }
+    }
     mock_post.return_value = mock_resp
 
     chunks = list(stream_observation_verification(
-        report_text="Sample report text",
+        report_text="Program 1: Factors\nFind factors of n.",
         assigned_questions="Program 1: Factors"
     ))
 
-    assert len(chunks) == 2
+    assert len(chunks) > 0
     full_output = "".join(chunks)
-    assert "# Observation Report Verification Report" in full_output
-    assert "Total Score: 9.0 / 10.0" in full_output
+    assert "Laboratory Observation Report" in full_output
+    assert "Assigned Questions Coverage Analysis" in full_output
 
-    # Check that payload sent to Ollama had stream=True and included assigned questions
+    # Check that payload sent to Ollama had format='json'
     mock_post.assert_called_once()
     _, kwargs = mock_post.call_args
     payload = kwargs["json"]
-    assert payload["stream"] is True
-    user_msg = payload["messages"][1]["content"]
-    assert "Program 1: Factors" in user_msg
+    assert payload["format"] == "json"
 
 
 @patch("verifier.requests.post")
 def test_verify_observation_report_sync(mock_post):
     mock_resp = MagicMock()
     mock_resp.raise_for_status = MagicMock()
-    mock_resp.iter_lines.return_value = [
-        json.dumps({"message": {"content": "Evaluation result chunk 1 "}}).encode("utf-8"),
-        json.dumps({"message": {"content": "chunk 2"}}).encode("utf-8"),
-    ]
+    mock_resp.json.return_value = {
+        "message": {
+            "content": json.dumps({
+                "objective": None,
+                "questions": [
+                    {
+                        "question_number": 1,
+                        "question_text": "Factors",
+                        "match_status": "FOUND_AND_COVERED",
+                        "requirements": [
+                            {"requirement": "Problem Understanding", "status": "PRESENT", "evidence": "Find factors of n", "confidence": "HIGH"}
+                        ]
+                    }
+                ]
+            })
+        }
+    }
     mock_post.return_value = mock_resp
 
     result = verify_observation_report_sync(
-        report_text="Sample report",
-        assigned_questions="P1: Test"
+        report_text="Program 1: Factors\nFind factors of n.",
+        assigned_questions="Program 1: Factors"
     )
-    assert result == "Evaluation result chunk 1 chunk 2"
+    assert "# 📊 Laboratory Observation Report" in result
+    assert "## 📊 Final Score" in result
 
 
 @patch("verifier.requests.get")

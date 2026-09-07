@@ -16,6 +16,156 @@ class VariableItem(BaseModel):
     purpose: str = Field(..., description="Stated purpose of the variable")
 
 
+# ============================================================
+# DYNAMIC EVALUATION SCHEMAS (RUNTIME QUESTIONS & MANUALS)
+# ============================================================
+
+class AssignedQuestion(BaseModel):
+    """Runtime representation of an assigned question/problem statement."""
+    model_config = ConfigDict(extra="ignore")
+    question_number: int = Field(..., description="1-indexed question sequence number")
+    question_text: str = Field(..., description="Full text or statement of the question")
+
+
+class RequirementEvaluation(BaseModel):
+    """Evaluation of a specific instruction manual requirement for a given question."""
+    model_config = ConfigDict(extra="ignore")
+    requirement: str = Field(..., description="Name of the requirement (e.g. Logic, Variables)")
+    status: Literal["PRESENT", "PARTIAL", "MISSING"] = Field(
+        default="MISSING",
+        description="PRESENT if supported by student evidence, PARTIAL if incomplete, MISSING if absent"
+    )
+    score: int = Field(
+        default=0,
+        ge=0,
+        le=2,
+        description="Marks awarded: 2 for PRESENT, 1 for PARTIAL, 0 for MISSING"
+    )
+    max_score: int = Field(
+        default=2,
+        description="Maximum marks possible for this criterion"
+    )
+    evidence: Optional[Union[str, List[str]]] = Field(
+        default=None,
+        description="Direct quote or list of verbatim excerpts from student's OCR text. None if MISSING."
+    )
+    evaluation: Optional[str] = Field(
+        default=None,
+        description="Objective assessment of how student evidence satisfies or fails the requirement"
+    )
+    reasoning: Optional[str] = Field(
+        default=None,
+        description="Evaluator's explanation for why status was classified as PRESENT, PARTIAL, or MISSING"
+    )
+    confidence: Literal["HIGH", "MEDIUM", "LOW"] = Field(
+        default="HIGH",
+        description="Confidence level reflecting OCR clarity and evidence certainty"
+    )
+    grounded: bool = Field(
+        default=True,
+        description="Whether Python post-validation verified this evidence exists in the OCR text"
+    )
+
+
+class QuestionEvaluation(BaseModel):
+    """Dynamic evaluation for a single assigned question against the student report."""
+    model_config = ConfigDict(extra="ignore")
+    question_number: int = Field(..., description="1-indexed question sequence number")
+    question_text: str = Field(..., description="Full statement of the assigned question")
+    match_status: Literal["FOUND_AND_COVERED", "FOUND_BUT_INCOMPLETE", "NOT_FOUND"] = Field(
+        default="NOT_FOUND",
+        description="FOUND_AND_COVERED: valid explanation present; FOUND_BUT_INCOMPLETE: title/list only; NOT_FOUND: no evidence"
+    )
+    match_confidence: Literal["HIGH", "MEDIUM", "LOW"] = Field(
+        default="HIGH",
+        description="Confidence level in matching student content to this assigned question"
+    )
+    matched_heading: Optional[str] = Field(
+        default=None,
+        description="The heading or label under which this question appeared in the student report"
+    )
+    match_evidence: Optional[List[str]] = Field(
+        default=None,
+        description="Grounded OCR fragments/quotes supporting the question association"
+    )
+    confidence: Literal["HIGH", "MEDIUM", "LOW"] = Field(
+        default="HIGH",
+        description="Overall confidence in matching and evidence identification"
+    )
+    score: int = Field(
+        default=0,
+        description="Total obtained marks for this question (sum of criteria)"
+    )
+    max_score: int = Field(
+        default=8,
+        description="Maximum marks possible for this question (sum of criteria max scores, e.g. 8)"
+    )
+    requirements: List[RequirementEvaluation] = Field(
+        default_factory=list,
+        description="List of requirement evaluations dynamically parsed from the Instruction Manual"
+    )
+
+
+class ObjectiveEvaluation(BaseModel):
+    """Evaluation of overall lab objective / session-level requirements."""
+    model_config = ConfigDict(extra="ignore")
+    requirement: str = Field(default="Objective of the Lab", description="Requirement name")
+    status: Literal["PRESENT", "PARTIAL", "MISSING"] = Field(
+        default="MISSING",
+        description="PRESENT if stated in student's own words; PARTIAL if copied titles; MISSING if absent"
+    )
+    score: int = Field(
+        default=0,
+        ge=0,
+        le=2,
+        description="Marks awarded: 2 for PRESENT, 1 for PARTIAL, 0 for MISSING"
+    )
+    max_score: int = Field(
+        default=2,
+        description="Maximum marks possible for objective"
+    )
+    evidence: Optional[Union[str, List[str]]] = Field(
+        default=None,
+        description="Direct quote or list of verbatim excerpts from student's OCR text"
+    )
+    evaluation: Optional[str] = Field(
+        default=None,
+        description="Objective assessment on the objective statement"
+    )
+    reasoning: Optional[str] = Field(
+        default=None,
+        description="Evaluator's explanation for why status was classified as PRESENT, PARTIAL, or MISSING"
+    )
+    confidence: Literal["HIGH", "MEDIUM", "LOW"] = Field(
+        default="HIGH",
+        description="Confidence level in extraction"
+    )
+    grounded: bool = Field(
+        default=True,
+        description="Whether evidence was verified against OCR text"
+    )
+
+
+class DynamicEvaluationResult(BaseModel):
+    """
+    Complete dynamic, hallucination-resistant evaluation result.
+    Grounds all findings strictly in student OCR text, without invented scores or grades.
+    """
+    model_config = ConfigDict(extra="ignore")
+    objective: Optional[ObjectiveEvaluation] = Field(
+        default=None,
+        description="Session-wide objective evaluation"
+    )
+    questions: List[QuestionEvaluation] = Field(
+        default_factory=list,
+        description="List of question evaluations, exactly matching runtime assigned questions"
+    )
+    summary: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Deterministic metrics (coverage, counts, percentages) computed in Python"
+    )
+
+
 class ProgramDetails(BaseModel):
     """
     Structured extraction details for a single program (e.g. P1..P10).
@@ -107,6 +257,7 @@ class StudentObservationReport(BaseModel):
     ocr: OcrResult
     extraction: ExtractionResult
     evaluation: Optional[str] = None
+    dynamic_evaluation: Optional[DynamicEvaluationResult] = None
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
 
 

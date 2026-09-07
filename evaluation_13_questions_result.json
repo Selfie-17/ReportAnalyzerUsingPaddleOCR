@@ -1,0 +1,842 @@
+{
+  "objective": {
+    "requirement": "Objective of the Lab",
+    "status": "PRESENT",
+    "score": 2,
+    "max_score": 2,
+    "evidence": "What was I trying to learn?\nI was trying to learn how basic C programming constructs work in practical programs, including input and output, arithmetic operations, conditions, switch statements, comparison, and the use of variables. I also wanted to understand how different inputs affect the result of a program.",
+    "evaluation": "The student provided a clear objective for the lab, which aligns with the instruction manual requirement.",
+    "reasoning": "The student's objective is directly stated and relevant to the lab's objectives.",
+    "confidence": "HIGH",
+    "grounded": true
+  },
+  "questions": [
+    {
+      "question_number": 1,
+      "question_text": "Write a C program to check whether a given number is even or odd.",
+      "match_status": "FOUND_AND_COVERED",
+      "match_confidence": "HIGH",
+      "matched_heading": "1. Even or Odd",
+      "match_evidence": [
+        "1. Even or Odd",
+        "1. What problem was I solving? The problem was to determine whether an entered integer is even or odd.",
+        "1. What problem was I solving? The problem was to perform an arithmetic operation selected from a menu."
+      ],
+      "confidence": "HIGH",
+      "score": 8,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What problem was I solving? The problem was to determine whether an entered integer is even or odd.",
+          "evaluation": "The student clearly stated the problem they were solving.",
+          "reasoning": "The problem description is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "How did I solve it? I read the integer and used the remainder after division by 2. If the remainder was zero I treated it as even; otherwise it was odd. The condition selected the final message.",
+          "evaluation": "The student provided a clear explanation of how they solved the problem.",
+          "reasoning": "The explanation is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What role did the important variables play?\nVariable\nPurpose\nnum\nstores the entered integer\nremainder\nstores the result of num % 2",
+          "evaluation": "The student clearly stated the purpose of the important variables.",
+          "reasoning": "The variable descriptions are directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What did I understand or notice while executing the program? I noticed that numbers divisible by 2 are classified as even, while numbers with a remainder of 1 are classified as odd.",
+          "evaluation": "The student provided a clear observation about the program's behavior.",
+          "reasoning": "The observation is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    },
+    {
+      "question_number": 2,
+      "question_text": "Write a C program to determine whether a given number is positive, negative, or zero.",
+      "match_status": "FOUND_AND_COVERED",
+      "match_confidence": "HIGH",
+      "matched_heading": "2. Positive, Negative, or Zero",
+      "match_evidence": [
+        "2. Positive, Negative, or Zero",
+        "1. What problem was I solving? The problem was to classify an integer as positive, negative, or zero.",
+        "2. How did I solve it? I compared the input with zero. The first condition checked whether it was greater than zero,"
+      ],
+      "confidence": "HIGH",
+      "score": 8,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What problem was I solving? The problem was to classify an integer as positive, negative, or zero.",
+          "evaluation": "The student clearly stated the problem they were solving.",
+          "reasoning": "The problem description is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "How did I solve it? I compared the input with zero. The first condition checked whether it was greater than zero, another checked whether it was less than zero, and otherwise it was zero.",
+          "evaluation": "The student provided a clear explanation of how they solved the problem.",
+          "reasoning": "The explanation is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What role did the important variables play?\nVariable\nPurpose\nnum\nstores the input value",
+          "evaluation": "The student clearly stated the purpose of the important variables.",
+          "reasoning": "The variable descriptions are directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What did I understand or notice while executing the program? I observed that zero needs its own case because it is neither positive nor negative.",
+          "evaluation": "The student provided a clear observation about the program's behavior.",
+          "reasoning": "The observation is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    },
+    {
+      "question_number": 3,
+      "question_text": "Write a C program to check whether an entered character is an uppercase letter, lowercase letter, digit, or special character.",
+      "match_status": "FOUND_AND_COVERED",
+      "match_confidence": "HIGH",
+      "matched_heading": "2. How did I solve it? I compared the character against the ranges for uppercase letters, lowercase letters, and digits.",
+      "match_evidence": [
+        "2. How did I solve it? I compared the character against the ranges for uppercase letters, lowercase letters, and digits.",
+        "If it did not match any of these categories, I treated it as a special character.",
+        "1. What problem was I solving? The problem was to identify whether an input character is uppercase, lowercase, a"
+      ],
+      "confidence": "HIGH",
+      "score": 8,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What problem was I solving? The problem was to determine whether an entered character is an uppercase letter, lowercase letter, digit, or special character.",
+          "evaluation": "The student clearly stated the problem they were solving.",
+          "reasoning": "The problem description is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "How did I solve it? I used conditional expressions to",
+          "evaluation": "The student provided a clear explanation of how they solved the problem.",
+          "reasoning": "The explanation is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What role did the important variables play?\nVariable\nPurpose\nch\nstores the entered character",
+          "evaluation": "The student clearly stated the purpose of the important variables.",
+          "reasoning": "The variable descriptions are directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What did I understand or notice while executing the program? I observed that the",
+          "evaluation": "The student provided a clear observation about the program's behavior.",
+          "reasoning": "The observation is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    },
+    {
+      "question_number": 4,
+      "question_text": "Write a C program to check whether a given year is a leap year or not.",
+      "match_status": "FOUND_AND_COVERED",
+      "match_confidence": "HIGH",
+      "matched_heading": "4. What did I understand or notice while executing the program? I noticed that a year divisible by 100 is not",
+      "match_evidence": [
+        "4. What did I understand or notice while executing the program? I noticed that a year divisible by 100 is not",
+        "normally a leap year unless it is also divisible by 400.",
+        "4. Leap Year"
+      ],
+      "confidence": "HIGH",
+      "score": 8,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What problem was I solving? The problem was to exchange two integer values without using a third temporary variable.",
+          "evaluation": "The student clearly stated the problem they were solving.",
+          "reasoning": "The problem description is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "How did I solve it? I changed the values using arithmetic operations so that the original values were exchanged.",
+          "evaluation": "The student provided a clear explanation of how they solved the problem.",
+          "reasoning": "The explanation is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What role did the important variables play?\nVariable\nPurpose\na,b\nhold the two values being exchanged",
+          "evaluation": "The student clearly stated the purpose of the important variables.",
+          "reasoning": "The variable descriptions are directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What did I understand or notice while executing the program? I noticed that the values can be exchanged without declaring a separate temporary variable.",
+          "evaluation": "The student provided a clear observation about the program's behavior.",
+          "reasoning": "The observation is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    },
+    {
+      "question_number": 5,
+      "question_text": "Write a C program to display the memory allocation required for different C data types using the sizeof() operator.",
+      "match_status": "FOUND_AND_COVERED",
+      "match_confidence": "HIGH",
+      "matched_heading": "2. How did I solve it? I used sizeof with different data types and printed the returned sizes.",
+      "match_evidence": [
+        "2. How did I solve it? I used sizeof with different data types and printed the returned sizes.",
+        "5. Memory Size of Data Types",
+        "1. What problem was I solving? The problem was to find how much memory common C data types occupy."
+      ],
+      "confidence": "HIGH",
+      "score": 6,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What problem was I solving? The problem was to exchange two values using a temporary variable.",
+          "evaluation": "The student clearly stated the problem they were solving.",
+          "reasoning": "The problem description is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "How did I solve it? I stored the first value in a temporary variable, moved the second value into the first variable, and then restored the saved value into the second variable.",
+          "evaluation": "The student provided a clear explanation of how they solved the problem.",
+          "reasoning": "The explanation is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What role did the important variables play?\nVariable\nPurpose\na,b\thold the values to swap\ntemp\ntemporarily stores one value",
+          "evaluation": "The student clearly stated the purpose of the important variables.",
+          "reasoning": "The variable descriptions are directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "MISSING",
+          "score": 0,
+          "max_score": 2,
+          "evidence": null,
+          "evaluation": "[Flagged: Generic observation ('What did I understand or notice while executing the program? The output was correct.') does not provide program-specific evidence] The student provided a clear observation about the program's behavior.",
+          "reasoning": "The observation is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    },
+    {
+      "question_number": 6,
+      "question_text": "Write a menu-based C program to perform addition, subtraction, multiplication, division, modulus, and power using a switch statement.",
+      "match_status": "FOUND_AND_COVERED",
+      "match_confidence": "HIGH",
+      "matched_heading": "2. How did I solve it? I read two numbers and a menu choice. A switch statement selected addition, subtraction,",
+      "match_evidence": [
+        "2. How did I solve it? I read two numbers and a menu choice. A switch statement selected addition, subtraction,",
+        "multiplication, division, modulus, or power.",
+        "6. Menu-Based Arithmetic"
+      ],
+      "confidence": "HIGH",
+      "score": 8,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What problem was I solving? The problem was to determine whether a positive integer is a perfect square without using the sqrt function.",
+          "evaluation": "The student clearly stated the problem they were solving.",
+          "reasoning": "The problem description is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "How did I solve it? I repeatedly increased a candidate value and compared its square with the input. The process stopped when the square reached or exceeded the input.",
+          "evaluation": "The student provided a clear explanation of how they solved the problem.",
+          "reasoning": "The explanation is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What role did the important variables play?\nVariable\nPurpose\nn\nstores the input number\ni\nstores the current candidate",
+          "evaluation": "The student clearly stated the purpose of the important variables.",
+          "reasoning": "The variable descriptions are directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What did I understand or notice while executing the program? I observed that the loop tests possible square roots one by one.",
+          "evaluation": "The student provided a clear observation about the program's behavior.",
+          "reasoning": "The observation is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    },
+    {
+      "question_number": 7,
+      "question_text": "Write a C program to swap two numbers without using a third/temporary variable.",
+      "match_status": "FOUND_AND_COVERED",
+      "match_confidence": "HIGH",
+      "matched_heading": "1. What problem was I solving? The problem was to exchange two integer values without using a third temporary",
+      "match_evidence": [
+        "1. What problem was I solving? The problem was to exchange two integer values without using a third temporary",
+        "variable.",
+        "7. Swap Without Temporary Variable"
+      ],
+      "confidence": "HIGH",
+      "score": 8,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What problem was I solving? The problem was to assign a grade according to a student's marks.",
+          "evaluation": "The student clearly stated the problem they were solving.",
+          "reasoning": "The problem description is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "How did I solve it? I compared the marks against grade ranges using if-else conditions. The first matching range determined the grade.",
+          "evaluation": "The student provided a clear explanation of how they solved the problem.",
+          "reasoning": "The explanation is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What role did the important variables play?\nVariable\nPurpose\nmarks\nstores the student's marks\ngrade\nstores the resulting grade",
+          "evaluation": "The student clearly stated the purpose of the important variables.",
+          "reasoning": "The variable descriptions are directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What did I understand or notice while executing the program? I observed that the",
+          "evaluation": "The student provided a clear observation about the program's behavior.",
+          "reasoning": "The observation is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    },
+    {
+      "question_number": 8,
+      "question_text": "Write a C program to swap two numbers using a temporary variable.",
+      "match_status": "FOUND_AND_COVERED",
+      "match_confidence": "HIGH",
+      "matched_heading": "8. Swap With Temporary Variable",
+      "match_evidence": [
+        "8. Swap With Temporary Variable"
+      ],
+      "confidence": "HIGH",
+      "score": 8,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What problem was I solving? The problem was to find the",
+          "evaluation": "The student clearly stated the problem they were solving.",
+          "reasoning": "The problem description is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "How did I solve it? I",
+          "evaluation": "The student provided a clear explanation of how they solved the problem.",
+          "reasoning": "The explanation is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What role did the important variables play? Variable Purpose",
+          "evaluation": "The student clearly stated the purpose of the important variables.",
+          "reasoning": "The variable descriptions are directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What did I understand or notice while executing the program? I observed that the",
+          "evaluation": "The student provided a clear observation about the program's behavior.",
+          "reasoning": "The observation is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    },
+    {
+      "question_number": 9,
+      "question_text": "Write a C program to check whether a given number is a perfect square without using the sqrt() library function.",
+      "match_status": "FOUND_AND_COVERED",
+      "match_confidence": "HIGH",
+      "matched_heading": "1. What problem was I solving? The problem was to determine whether a positive integer is a perfect square without",
+      "match_evidence": [
+        "1. What problem was I solving? The problem was to determine whether a positive integer is a perfect square without",
+        "using sqrt.",
+        "9. Perfect Square"
+      ],
+      "confidence": "HIGH",
+      "score": 8,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What problem was I solving? The problem was to",
+          "evaluation": "The student clearly stated the problem they were solving.",
+          "reasoning": "The problem description is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "How did I solve it? I checked",
+          "evaluation": "The student provided a clear explanation of how they solved the problem.",
+          "reasoning": "The explanation is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What role did the important variables play?\nVariable\nPurpose\nnum\nstores the number to check\ni\nstores the current divisor",
+          "evaluation": "The student clearly stated the purpose of the important variables.",
+          "reasoning": "The variable descriptions are directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What did I understand or notice while executing the program? I observed that the",
+          "evaluation": "The student provided a clear observation about the program's behavior.",
+          "reasoning": "The observation is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    },
+    {
+      "question_number": 10,
+      "question_text": "Write a C program to calculate a student's grade based on marks using if-else statements.",
+      "match_status": "FOUND_AND_COVERED",
+      "match_confidence": "HIGH",
+      "matched_heading": "2. How did I solve it? I compared the marks against grade ranges using if-else conditions. The first matching range",
+      "match_evidence": [
+        "2. How did I solve it? I compared the marks against grade ranges using if-else conditions. The first matching range",
+        "determined the grade.",
+        "1. What problem was I solving? The problem was to assign a grade according to a student's marks."
+      ],
+      "confidence": "HIGH",
+      "score": 8,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What problem was I solving? The problem was to find the factorial of a given number.",
+          "evaluation": "The student clearly stated the problem they were solving.",
+          "reasoning": "The problem description is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "How did I solve it? I",
+          "evaluation": "The student provided a clear explanation of how they solved the problem.",
+          "reasoning": "The explanation is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What role did the important variables play? Variable Purpose num stores the",
+          "evaluation": "The student clearly stated the purpose of the important variables.",
+          "reasoning": "The variable descriptions are directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "What did I understand or notice while executing the program? I observed that the",
+          "evaluation": "The student provided a clear observation about the program's behavior.",
+          "reasoning": "The observation is directly stated and relevant to the question.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    },
+    {
+      "question_number": 11,
+      "question_text": "Write an extended menu-based C calculator that handles invalid menu choices and division by zero.",
+      "match_status": "FOUND_BUT_INCOMPLETE",
+      "match_confidence": "HIGH",
+      "matched_heading": "1. What problem was I solving? The problem was to create a calculator menu that also handles invalid choices and",
+      "match_evidence": [
+        "1. What problem was I solving? The problem was to create a calculator menu that also handles invalid choices and",
+        "division by zero.",
+        "4. What did I understand or notice while executing the program? I noticed that division by zero must be handled"
+      ],
+      "confidence": "HIGH",
+      "score": 0,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "MISSING",
+          "score": 0,
+          "max_score": 2,
+          "evidence": null,
+          "evaluation": "No evidence found in student report.",
+          "reasoning": "Section absent from student report.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "MISSING",
+          "score": 0,
+          "max_score": 2,
+          "evidence": null,
+          "evaluation": "No evidence found in student report.",
+          "reasoning": "Section absent from student report.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "MISSING",
+          "score": 0,
+          "max_score": 2,
+          "evidence": null,
+          "evaluation": "No evidence found in student report.",
+          "reasoning": "Section absent from student report.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "MISSING",
+          "score": 0,
+          "max_score": 2,
+          "evidence": null,
+          "evaluation": "No evidence found in student report.",
+          "reasoning": "Section absent from student report.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    },
+    {
+      "question_number": 12,
+      "question_text": "Write a C program to find the largest of three numbers using the ternary operator.",
+      "match_status": "FOUND_BUT_INCOMPLETE",
+      "match_confidence": "HIGH",
+      "matched_heading": "12. Largest of Three Using Ternary",
+      "match_evidence": [
+        "12. Largest of Three Using Ternary",
+        "1. What problem was I solving? The problem was to find the largest among three numbers.",
+        "2. How did I solve it? I used conditional expressions to compare the values and retain the largest one."
+      ],
+      "confidence": "HIGH",
+      "score": 0,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "MISSING",
+          "score": 0,
+          "max_score": 2,
+          "evidence": null,
+          "evaluation": "No section explanation provided.",
+          "reasoning": "Omitted from report.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "MISSING",
+          "score": 0,
+          "max_score": 2,
+          "evidence": null,
+          "evaluation": "No section explanation provided.",
+          "reasoning": "Omitted from report.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "MISSING",
+          "score": 0,
+          "max_score": 2,
+          "evidence": null,
+          "evaluation": "No section explanation provided.",
+          "reasoning": "Omitted from report.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "MISSING",
+          "score": 0,
+          "max_score": 2,
+          "evidence": null,
+          "evaluation": "No section explanation provided.",
+          "reasoning": "Omitted from report.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    },
+    {
+      "question_number": 13,
+      "question_text": "Write a C program to convert a grade point to a letter grade using a switch statement.",
+      "match_status": "FOUND_BUT_INCOMPLETE",
+      "match_confidence": "HIGH",
+      "matched_heading": "1. What problem was I solving? The problem was to convert a grade point into a corresponding letter grade.",
+      "match_evidence": [
+        "1. What problem was I solving? The problem was to convert a grade point into a corresponding letter grade.",
+        "13. Grade Point to Letter Grade",
+        "2. How did I solve it? I used a switch-based mapping to associate the supplied grade point with its letter grade."
+      ],
+      "confidence": "HIGH",
+      "score": 0,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "MISSING",
+          "score": 0,
+          "max_score": 2,
+          "evidence": null,
+          "evaluation": "No section explanation provided.",
+          "reasoning": "Omitted from report.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "MISSING",
+          "score": 0,
+          "max_score": 2,
+          "evidence": null,
+          "evaluation": "No section explanation provided.",
+          "reasoning": "Omitted from report.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "MISSING",
+          "score": 0,
+          "max_score": 2,
+          "evidence": null,
+          "evaluation": "No section explanation provided.",
+          "reasoning": "Omitted from report.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "MISSING",
+          "score": 0,
+          "max_score": 2,
+          "evidence": null,
+          "evaluation": "No section explanation provided.",
+          "reasoning": "Omitted from report.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total_assigned": 13,
+    "found_and_covered": 10,
+    "found_but_incomplete": 3,
+    "not_found": 0,
+    "coverage_percentage": 76.9,
+    "total_evidence_snippets": 40,
+    "grounded_evidence_snippets": 40,
+    "evidence_grounding_rate": 100.0,
+    "objective_status": "PRESENT",
+    "objective_score": 2,
+    "objective_max": 2,
+    "total_obtained": 80,
+    "total_max": 106,
+    "final_score": 7.55,
+    "final_score_out_of_10": 7.55,
+    "overall_assessment": "Good understanding with some incomplete explanations.",
+    "criteria_totals": {
+      "Problem Understanding": {
+        "obtained": 20,
+        "max": 26
+      },
+      "Logic / Approach Used": {
+        "obtained": 20,
+        "max": 26
+      },
+      "Important Variables and Their Purpose": {
+        "obtained": 20,
+        "max": 26
+      },
+      "What I Observed": {
+        "obtained": 18,
+        "max": 26
+      }
+    }
+  }
+}

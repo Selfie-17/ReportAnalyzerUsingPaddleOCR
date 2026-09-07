@@ -13,6 +13,9 @@ import pymupdf as fitz  # Modern PyMuPDF import for PDF preview and page renderi
 from verifier import (
     check_ollama_status,
     stream_observation_verification,
+    evaluate_observation_report,
+    render_verification_markdown,
+    sanitize_student_ocr_text,
     DEFAULT_OLLAMA_URL,
     DEFAULT_MODEL,
     DEFAULT_MANUAL_QUESTIONS_PRESET,
@@ -20,6 +23,8 @@ from verifier import (
     OFFICIAL_INSTRUCTION_MANUAL,
     format_extraction_for_evaluation,
     parse_evaluation_scores,
+    parse_assigned_questions,
+    parse_instruction_manual,
 )
 from extractor import extract_observation_report
 from schemas import (
@@ -77,6 +82,9 @@ if "verification_result" not in st.session_state:
 
 if "assigned_questions" not in st.session_state:
     st.session_state["assigned_questions"] = WEEK1_13_PROGRAMS_PRESET
+
+if "instruction_manual" not in st.session_state:
+    st.session_state["instruction_manual"] = OFFICIAL_INSTRUCTION_MANUAL
 
 if "debug_stdout" not in st.session_state:
     st.session_state["debug_stdout"] = ""
@@ -184,40 +192,66 @@ st.caption(
 )
 
 # ============================================================
-# TOP CONFIGURATION: LAB SESSION ASSIGNMENT & EVALUATION CRITERIA
+# TOP CONFIGURATION: RUNTIME ASSIGNED QUESTIONS & INSTRUCTION MANUAL
 # ============================================================
-with st.expander("📝 Assigned Lab Questions & Criteria (Basis for Report & Evaluation)", expanded=True):
+with st.expander("📝 Runtime Configuration: Assigned Questions & Instruction Manual", expanded=True):
     st.caption(
-        "Specify the questions/problem statements assigned for this laboratory session. "
-        "These questions guide both Structured Extraction (identifying P1..P13 in Step 4) "
-        "and Instruction Manual Evaluation (Step 6 / Batch Mode)."
+        "Both the assigned questions and instruction manual are dynamic runtime inputs. "
+        "The system evaluates whatever questions and criteria are supplied here without hardcoded assumptions."
     )
-    col_preset1, col_preset2, col_preset3, col_guide = st.columns([1.2, 1, 0.8, 1.5])
-    with col_preset1:
-        if st.button("📋 Load Week 1 (13 Programs)", use_container_width=True, help="Load 13 standard C programs for Week 1"):
-            st.session_state["assigned_questions"] = WEEK1_13_PROGRAMS_PRESET
-            st.rerun()
-    with col_preset2:
-        if st.button("📋 Manual (5 Programs)", use_container_width=True, help="Load 5 standard programs from instruction manual"):
-            st.session_state["assigned_questions"] = DEFAULT_MANUAL_QUESTIONS_PRESET
-            st.rerun()
-    with col_preset3:
-        if st.button("🗑️ Clear", use_container_width=True, help="Clear assigned questions"):
-            st.session_state["assigned_questions"] = ""
-            st.rerun()
-    with col_guide:
-        with st.popover("📖 View Official Instruction Manual"):
-            st.markdown(OFFICIAL_INSTRUCTION_MANUAL)
+    col_q, col_m = st.columns(2)
+    with col_q:
+        st.markdown("**1. Assigned Questions (Runtime Data)**")
+        cp1, cp2, cp3 = st.columns([1.2, 1, 0.8])
+        with cp1:
+            if st.button("📋 Week 1 (13 Progs)", use_container_width=True, help="Load 13 standard C programs"):
+                st.session_state["assigned_questions"] = WEEK1_13_PROGRAMS_PRESET
+                st.rerun()
+        with cp2:
+            if st.button("📋 Manual (5 Progs)", use_container_width=True, help="Load 5 standard programs"):
+                st.session_state["assigned_questions"] = DEFAULT_MANUAL_QUESTIONS_PRESET
+                st.rerun()
+        with cp3:
+            if st.button("🗑️ Clear", use_container_width=True, help="Clear assigned questions", key="btn_clear_questions"):
+                st.session_state["assigned_questions"] = ""
+                st.rerun()
 
-    assigned_questions_top = st.text_area(
-        "Assigned Lab Questions / Problem Statements:",
-        value=st.session_state.get("assigned_questions", WEEK1_13_PROGRAMS_PRESET),
-        height=140,
-        placeholder="Enter the lab questions, e.g.:\n1. Write a C program to check whether a given number is even or odd.\n2. Write a C program to determine whether a given number is positive, negative, or zero...",
-        help="Specify the problems assigned to students for this lab session. Used across Single Report extraction/evaluation and Batch processing.",
-        key="top_assigned_questions"
-    )
-    st.session_state["assigned_questions"] = assigned_questions_top
+        parsed_q = parse_assigned_questions(st.session_state.get("assigned_questions", ""))
+        st.caption(f"✓ **{len(parsed_q)} questions parsed dynamically**")
+
+        assigned_questions_top = st.text_area(
+            "Assigned Questions:",
+            value=st.session_state.get("assigned_questions", WEEK1_13_PROGRAMS_PRESET),
+            height=140,
+            placeholder="Enter the lab questions (any language, any topic, any count)...",
+            key="top_assigned_questions"
+        )
+        st.session_state["assigned_questions"] = assigned_questions_top
+
+    with col_m:
+        st.markdown("**2. Instruction Manual / Criteria (Runtime Data)**")
+        mp1, mp2 = st.columns(2)
+        with mp1:
+            if st.button("📖 Default Manual", use_container_width=True, help="Load official 5-section manual"):
+                st.session_state["instruction_manual"] = OFFICIAL_INSTRUCTION_MANUAL
+                st.rerun()
+        with mp2:
+            if st.button("🗑️ Clear", use_container_width=True, help="Clear manual", key="btn_clear_manual"):
+                st.session_state["instruction_manual"] = ""
+                st.rerun()
+
+        parsed_man = parse_instruction_manual(st.session_state.get("instruction_manual", ""))
+        sec_names = parsed_man.get("per_question_requirements", [])
+        st.caption(f"✓ **{len(sec_names)} required section(s) detected:** `{', '.join(sec_names)}`")
+
+        manual_text_top = st.text_area(
+            "Instruction Manual / Evaluation Requirements:",
+            value=st.session_state.get("instruction_manual", OFFICIAL_INSTRUCTION_MANUAL),
+            height=140,
+            placeholder="Enter the instruction manual defining what sections and rules are required...",
+            key="top_instruction_manual"
+        )
+        st.session_state["instruction_manual"] = manual_text_top
 
 tab_single, tab_batch = st.tabs([
     "📄 Single Student Report",
@@ -714,29 +748,32 @@ with tab_single:
                 if step6_assigned_val != st.session_state.get("assigned_questions"):
                     st.session_state["assigned_questions"] = step6_assigned_val
 
-            # Option to choose text source: Raw/Edited OCR text vs Structured Report (if available)
-            source_options = ["Clean Edited OCR Text"]
-            has_structured = st.session_state.get("single_student_report") is not None
-            if has_structured:
-                source_options.append("Structured Canonical JSON Summary (from Step 4)")
+            # STRICT SOURCE SEPARATION: Evaluation source is strictly Student OCR Text extracted from uploaded report
+            raw_ocr = st.session_state.get("ocr_text", "").strip()
+            student_ocr_source = st.session_state.get("edited_text", "").strip() or raw_ocr
 
-            eval_source = st.radio(
-                "Text Source for Evaluation:",
-                options=source_options,
-                index=0,
-                horizontal=True,
-                help="Select which version of the student report to send to Qwen for verification."
+            parsed_assigned = parse_assigned_questions(st.session_state.get("assigned_questions", ""))
+            manual_text_val = st.session_state.get("instruction_manual", "")
+
+            # Sanitize and isolate student OCR
+            evaluation_source = sanitize_student_ocr_text(
+                raw_text=student_ocr_source,
+                filename=uploaded_file.name,
+                assigned_count=len(parsed_assigned),
+                manual_char_count=len(manual_text_val),
+                debug=True
             )
 
-            # Determine text to evaluate
-            if eval_source == "Structured Canonical JSON Summary (from Step 4)" and has_structured:
-                rep: StudentObservationReport = st.session_state["single_student_report"]
-                text_for_eval = format_extraction_for_evaluation(
-                    rep.extraction,
-                    fallback_text=st.session_state.get("edited_text", "").strip()
-                )
-            else:
-                text_for_eval = st.session_state.get("edited_text", "").strip()
+            st.success("📄 **Evaluation Source:** Strictly isolated Student OCR Text extracted from uploaded report.")
+
+            with st.expander("🔍 [INPUT DEBUG] Source Separation Verification", expanded=False):
+                st.write(f"**PDF Filename:** `{uploaded_file.name}`")
+                st.write(f"**OCR Character Count:** `{len(raw_ocr)}`")
+                st.write(f"**Evaluation Source Character Count:** `{len(evaluation_source)}`")
+                st.write(f"**Assigned Questions Count:** `{len(parsed_assigned)}`")
+                st.write(f"**Instruction Manual Character Count:** `{len(manual_text_val)}`")
+                st.text_area("OCR First 500 Characters", value=raw_ocr[:500], height=90, disabled=True)
+                st.text_area("OCR Last 500 Characters", value=raw_ocr[-500:], height=90, disabled=True)
 
             c_btn1, c_btn2 = st.columns([2, 1])
             with c_btn1:
@@ -755,19 +792,31 @@ with tab_single:
             if verify_clicked:
                 if not ollama_status["ok"]:
                     st.error(f"Cannot connect to Ollama at {ollama_url}. Please ensure Ollama is running.")
-                elif not text_for_eval:
+                elif not evaluation_source:
                     st.warning("Cannot evaluate empty report text.")
                 else:
+                    # Strict source separation assertions
+                    assert "## 📊 Final Score" not in evaluation_source, "Generated final score markdown must not be in evaluation source"
+                    assert "# 📊 Laboratory Observation Report" not in evaluation_source, "Generated report markdown must not be in evaluation source"
+                    assert "def add(" not in evaluation_source, "Evaluator python test code must not be in evaluation source"
+                    assert "def subtract(" not in evaluation_source, "Evaluator python test code must not be in evaluation source"
+                    assert "def multiply(" not in evaluation_source, "Evaluator python test code must not be in evaluation source"
+                    assert "test_cases =" not in evaluation_source, "Test cases must not be in evaluation source"
+                    assert "Expected qualitative behavior" not in evaluation_source, "Expected qualitative behavior must not be in evaluation source"
+
                     eval_container = st.empty()
-                    with st.spinner("Evaluating report against assigned questions and Instruction Manual rubric..."):
-                        stream_gen = stream_observation_verification(
-                            report_text=text_for_eval,
+                    with st.spinner("Auditing report evidence against assigned questions and Instruction Manual rubric..."):
+                        eval_result = evaluate_observation_report(
+                            report_text=evaluation_source,
                             assigned_questions=st.session_state.get("assigned_questions", "").strip(),
+                            instruction_manual=st.session_state.get("instruction_manual", "").strip(),
                             base_url=ollama_url,
                             model=selected_model,
-                            temperature=temperature
+                            temperature=temperature,
+                            filename=uploaded_file.name
                         )
-                        final_eval = eval_container.write_stream(stream_gen)
+                        final_eval = render_verification_markdown(eval_result)
+                        eval_container.markdown(final_eval)
                         st.session_state["verification_result"] = final_eval
 
             if st.session_state.get("verification_result") and not verify_clicked:
@@ -887,10 +936,12 @@ with tab_batch:
                 temperature=temperature,
                 python_exe=get_paddle_python(),
                 assigned_questions=st.session_state.get("assigned_questions", ""),
+                instruction_manual=st.session_state.get("instruction_manual", ""),
                 enable_evaluation=True
             )
-            # Safely set assigned questions for batch pipeline
+            # Safely set assigned questions & manual for batch pipeline
             pipeline.assigned_questions = st.session_state.get("assigned_questions", "")
+            pipeline.instruction_manual = st.session_state.get("instruction_manual", "")
 
             # Student Extraction Scope Selector
             st.divider()
@@ -937,15 +988,24 @@ with tab_batch:
                     selected_student_ids = all_sids
                     st.success(f"Targeting **all {len(selected_student_ids)}** discovered students.")
 
-            # Execution controls: Distinct Start, Resume, and Retry Failed
+            eval_extracted_toggle = st.checkbox(
+                "Evaluate extracted text instead of raw OCR (recommended)",
+                value=True,
+                help="When enabled, Qwen evaluates against structured student report extractions rather than unsegmented OCR text."
+            )
+            pipeline.evaluate_extracted_text = eval_extracted_toggle
+
+            # Execution controls: Distinct Start, Resume, Retry Failed, and Rerun Evaluation
             st.divider()
-            c_run1, c_run2, c_run3 = st.columns(3)
+            c_run1, c_run2, c_run3, c_run4 = st.columns([1, 1, 1, 1.2])
             with c_run1:
                 btn_start_batch = st.button(f"🚀 Start Batch ({len(selected_student_ids)} students)", type="primary", use_container_width=True)
             with c_run2:
                 btn_resume_batch = st.button(f"🔄 Resume Incomplete ({len(selected_student_ids)} target)", use_container_width=True)
             with c_run3:
                 btn_retry_failed = st.button("⚠️ Retry Failed Only", use_container_width=True)
+            with c_run4:
+                btn_rerun_eval = st.button("🧠 Re-run Qwen Evaluation (Extracted)", help="Re-runs Qwen rubric evaluation directly on already-extracted student text without repeating OCR or extraction.", use_container_width=True)
 
             # Status and live stage display containers
             live_stage_box = st.empty()
@@ -1023,7 +1083,7 @@ with tab_batch:
             update_dashboard()
 
             # Execute Batch actions
-            if btn_start_batch or btn_resume_batch or btn_retry_failed:
+            if btn_start_batch or btn_resume_batch or btn_retry_failed or btn_rerun_eval:
                 if not ollama_status["ok"]:
                     st.error(f"Cannot connect to Ollama at {ollama_url}. Please ensure Ollama is online.")
                     st.stop()
@@ -1038,7 +1098,10 @@ with tab_batch:
                     live_stage_box.info(f"📍 **Currently processing:** Student `{entry.student_id}` | **Stage:** `{stage_name}`")
                     update_dashboard()
 
-                if btn_retry_failed:
+                if btn_rerun_eval:
+                    status_text.info(f"⏳ Re-running Qwen evaluation on extracted text for {batch_section_id} ({len(selected_student_ids)} students targeted)...")
+                    manifest = pipeline.rerun_evaluations_on_extracted(discovered_students=discovered, selected_student_ids=selected_student_ids, progress_cb=on_progress)
+                elif btn_retry_failed:
                     status_text.info(f"⏳ Running Retry Failed for {batch_section_id}... (Only processing failed students)")
                     manifest = pipeline.retry_failed(discovered_students=discovered, selected_student_ids=selected_student_ids, progress_cb=on_progress)
                 else:

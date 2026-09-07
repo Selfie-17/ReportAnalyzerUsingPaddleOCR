@@ -1,0 +1,71 @@
+{
+  "total_questions": 13,
+  "lab_title": "C Programming Week 1 Laboratory",
+  "questions": [
+    {
+      "question_number": 1,
+      "title": "Program 1",
+      "description": "Write a C program to check whether a given number is even or odd."
+    },
+    {
+      "question_number": 2,
+      "title": "Program 2",
+      "description": "Write a C program to determine whether a given number is positive, negative, or zero."
+    },
+    {
+      "question_number": 3,
+      "title": "Program 3",
+      "description": "Write a C program to check whether an entered character is an uppercase letter, lowercase letter, digit, or special character."
+    },
+    {
+      "question_number": 4,
+      "title": "Program 4",
+      "description": "Write a C program to check whether a given year is a leap year or not."
+    },
+    {
+      "question_number": 5,
+      "title": "Program 5",
+      "description": "Write a C program to display the memory allocation required for different C data types using the sizeof() operator."
+    },
+    {
+      "question_number": 6,
+      "title": "Program 6",
+      "description": "Write a menu-based C program to perform addition, subtraction, multiplication, division, modulus, and power using a switch statement."
+    },
+    {
+      "question_number": 7,
+      "title": "Program 7",
+      "description": "Write a C program to swap two numbers without using a third/temporary variable."
+    },
+    {
+      "question_number": 8,
+      "title": "Program 8",
+      "description": "Write a C program to swap two numbers using a temporary variable."
+    },
+    {
+      "question_number": 9,
+      "title": "Program 9",
+      "description": "Write a C program to check whether a given number is a perfect square without using the sqrt() library function."
+    },
+    {
+      "question_number": 10,
+      "title": "Program 10",
+      "description": "Write a C program to calculate a student's grade based on marks using if-else statements."
+    },
+    {
+      "question_number": 11,
+      "title": "Program 11",
+      "description": "Write an extended menu-based C calculator that handles invalid menu choices and division by zero."
+    },
+    {
+      "question_number": 12,
+      "title": "Program 12",
+      "description": "Write a C program to find the largest of three numbers using the ternary operator."
+    },
+    {
+      "question_number": 13,
+      "title": "Program 13",
+      "description": "Write a C program to convert a grade point to a letter grade using a switch statement."
+    }
+  ]
+}

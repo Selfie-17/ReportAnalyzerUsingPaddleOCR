@@ -1,0 +1,209 @@
+# Laboratory Observation Report
+## 1. Objective of the Lab
+I was trying to learn how basic C programming constructs work in practical programs, including input and output, arithmetic operations, conditions, switch statements, comparison, and the use of variables. I also wanted to understand how different inputs affect the result of a program.
+
+## Program 1
+### Problem Understanding
+The problem was to determine whether an entered integer is even or odd.
+
+### Logic / Approach Used
+Read the integer and used the remainder after division by 2. If the remainder was zero I treated it as even; otherwise it was odd. The condition selected the final message.
+
+### Important Variables and Their Purpose
+| Variable | Purpose |
+| :--- | :--- |
+| `num` | stores the entered integer |
+| `remainder` | stores the result of num % 2 |
+
+### What I Observed
+I noticed that numbers divisible by 2 are classified as even, while numbers with a remainder of 1 are classified as odd.
+
+## Program 2
+### Problem Understanding
+The problem was to classify an integer as positive, negative, or zero.
+
+### Logic / Approach Used
+Compared the input with zero. The first condition checked whether it was greater than zero, another checked whether it was less than zero, and otherwise it was zero.
+
+### Important Variables and Their Purpose
+| Variable | Purpose |
+| :--- | :--- |
+| `num` | stores the input value |
+
+### What I Observed
+I observed that zero needs its own case because it is neither positive nor negative.
+
+## Program 3
+### Problem Understanding
+The problem was to identify whether an input character is uppercase, lowercase, a digit, or a special character.
+
+### Logic / Approach Used
+Compared the character against the ranges for uppercase letters, lowercase letters, and digits. If it did not match any of these categories, I treated it as a special character.
+
+### Important Variables and Their Purpose
+| Variable | Purpose |
+| :--- | :--- |
+| `ch` | stores the input character |
+
+### What I Observed
+I observed that a character can be classified into different categories by checking its ASCII range.
+
+## Program 4
+### Problem Understanding
+The problem was to determine whether a given year is a leap year.
+
+### Logic / Approach Used
+Checked divisibility by 400, and otherwise checked the divisibility conditions involving 4 and 100. The combined conditions determined the result.
+
+### Important Variables and Their Purpose
+| Variable | Purpose |
+| :--- | :--- |
+| `year` | stores the entered year |
+
+### What I Observed
+I noticed that a year divisible by 100 is not normally a leap year unless it is also divisible by 400.
+
+## Program 5
+### Problem Understanding
+The problem was to find how much memory common C data types occupy.
+
+### Logic / Approach Used
+Used sizeof with different data types and printed the returned sizes.
+
+### Important Variables and Their Purpose
+| Variable | Purpose |
+| :--- | :--- |
+| `size` | stores a size returned by sizeof |
+
+### What I Observed
+I observed that the size of a data type can depend on the compiler and system.
+
+## Program 6
+### Problem Understanding
+The problem was to perform an arithmetic operation selected from a menu.
+
+### Logic / Approach Used
+Read two numbers and a menu choice. A switch statement selected addition, subtraction, multiplication, division, modulus, or power.
+
+### Important Variables and Their Purpose
+| Variable | Purpose |
+| :--- | :--- |
+| `a` | store the two operands |
+| `choice` | stores the selected menu operation |
+
+### What I Observed
+The program executed successfully.
+
+## Program 7
+### Problem Understanding
+The problem was to exchange two integer values without using a third temporary variable.
+
+### Logic / Approach Used
+Changed the values using arithmetic operations so that the original values were exchanged.
+
+### Important Variables and Their Purpose
+| Variable | Purpose |
+| :--- | :--- |
+| `a` | hold the two values being exchanged |
+
+### What I Observed
+I noticed that the values can be exchanged without declaring a separate temporary variable.
+
+## Program 8
+### Problem Understanding
+The problem was to exchange two values using a temporary variable.
+
+### Logic / Approach Used
+Stored the first value in a temporary variable, moved the second value into the first variable, and then restored the saved value into the second variable.
+
+### Important Variables and Their Purpose
+| Variable | Purpose |
+| :--- | :--- |
+| `a` | hold the values to swap |
+| `temp` | temporarily stores one value |
+
+### What I Observed
+The output was correct.
+
+## Program 9
+### Problem Understanding
+The problem was to determine whether a positive integer is a perfect square without using sqrt.
+
+### Logic / Approach Used
+Repeatedly increased a candidate value and compared its square with the input. The process stopped when the square reached or exceeded the input.
+
+### Important Variables and Their Purpose
+| Variable | Purpose |
+| :--- | :--- |
+| `n` | stores the input number |
+| `i` | stores the current candidate |
+
+### What I Observed
+I observed that the loop tests possible square roots one by one.
+
+## Program 10
+### Problem Understanding
+The problem was to assign a grade according to a student's marks.
+
+### Logic / Approach Used
+Compared the marks against grade ranges using if-else conditions. The first matching range determined the grade.
+
+### Important Variables and Their Purpose
+| Variable | Purpose |
+| :--- | :--- |
+| `marks` | stores the student's marks |
+| `grade` | stores the resulting grade |
+
+### What I Observed
+I noticed that the order of the conditions matters because the first matching range is selected.
+
+## Program 11
+### Problem Understanding
+The problem was to create a calculator menu that also handles invalid choices and division by zero.
+
+### Logic / Approach Used
+Used a switch statement to select the requested operation and added a default case for an invalid choice. Before division I checked whether the divisor was zero.
+
+### Important Variables and Their Purpose
+| Variable | Purpose |
+| :--- | :--- |
+| `choice` | stores the selected operation |
+| `a` | store operands |
+| `b` | store operands |
+
+### What I Observed
+I noticed that division by zero must be handled separately to avoid an invalid calculation.
+
+## Program 12
+### Problem Understanding
+The problem was to find the largest among three numbers.
+
+### Logic / Approach Used
+Used conditional expressions to compare the values and retain the largest one.
+
+### Important Variables and Their Purpose
+| Variable | Purpose |
+| :--- | :--- |
+| `a` | store the three input values |
+| `b` | store the three input values |
+| `c` | store the three input values |
+| `largest` | stores the largest value |
+
+### What I Observed
+I observed that the ternary operator can express a simple conditional selection compactly.
+
+## Program 13
+### Problem Understanding
+The problem was to convert a grade point into a corresponding letter grade.
+
+### Logic / Approach Used
+Used a switch-based mapping to associate the supplied grade point with its letter grade.
+
+### Important Variables and Their Purpose
+| Variable | Purpose |
+| :--- | :--- |
+| `gradePoint` | stores the grade point |
+| `letter` | stores the resulting letter grade |
+
+### What I Observed
+I observed that a switch statement is useful when several discrete values map to predefined results.

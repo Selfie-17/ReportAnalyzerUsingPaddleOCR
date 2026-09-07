@@ -1,0 +1,280 @@
+{
+  "status": "success",
+  "objective_of_lab": "I was trying to learn how basic C programming constructs work in practical programs, including input and output, arithmetic operations, conditions, switch statements, comparison, and the use of variables. I also wanted to understand how different inputs affect the result of a program.",
+  "programs": {
+    "P1": {
+      "status": "detected",
+      "source_pages": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "problem_understanding": "The problem was to determine whether an entered integer is even or odd.",
+      "logic_approach": "Read the integer and used the remainder after division by 2. If the remainder was zero I treated it as even; otherwise it was odd. The condition selected the final message.",
+      "important_variables": [
+        {
+          "variable": "num",
+          "purpose": "stores the entered integer"
+        },
+        {
+          "variable": "remainder",
+          "purpose": "stores the result of num % 2"
+        }
+      ],
+      "what_i_observed": "I noticed that numbers divisible by 2 are classified as even, while numbers with a remainder of 1 are classified as odd."
+    },
+    "P2": {
+      "status": "detected",
+      "source_pages": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "problem_understanding": "The problem was to classify an integer as positive, negative, or zero.",
+      "logic_approach": "Compared the input with zero. The first condition checked whether it was greater than zero, another checked whether it was less than zero, and otherwise it was zero.",
+      "important_variables": [
+        {
+          "variable": "num",
+          "purpose": "stores the input value"
+        }
+      ],
+      "what_i_observed": "I observed that zero needs its own case because it is neither positive nor negative."
+    },
+    "P3": {
+      "status": "detected",
+      "source_pages": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "problem_understanding": "The problem was to identify whether an input character is uppercase, lowercase, a digit, or a special character.",
+      "logic_approach": "Compared the character against the ranges for uppercase letters, lowercase letters, and digits. If it did not match any of these categories, I treated it as a special character.",
+      "important_variables": [
+        {
+          "variable": "ch",
+          "purpose": "stores the input character"
+        }
+      ],
+      "what_i_observed": "I observed that a character can be classified into different categories by checking its ASCII range."
+    },
+    "P4": {
+      "status": "detected",
+      "source_pages": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "problem_understanding": "The problem was to determine whether a given year is a leap year.",
+      "logic_approach": "Checked divisibility by 400, and otherwise checked the divisibility conditions involving 4 and 100. The combined conditions determined the result.",
+      "important_variables": [
+        {
+          "variable": "year",
+          "purpose": "stores the entered year"
+        }
+      ],
+      "what_i_observed": "I noticed that a year divisible by 100 is not normally a leap year unless it is also divisible by 400."
+    },
+    "P5": {
+      "status": "detected",
+      "source_pages": [
+        2,
+        5
+      ],
+      "problem_understanding": "The problem was to find how much memory common C data types occupy.",
+      "logic_approach": "Used sizeof with different data types and printed the returned sizes.",
+      "important_variables": [
+        {
+          "variable": "size",
+          "purpose": "stores a size returned by sizeof"
+        }
+      ],
+      "what_i_observed": "I observed that the size of a data type can depend on the compiler and system."
+    },
+    "P6": {
+      "status": "detected",
+      "source_pages": [
+        2,
+        5
+      ],
+      "problem_understanding": "The problem was to perform an arithmetic operation selected from a menu.",
+      "logic_approach": "Read two numbers and a menu choice. A switch statement selected addition, subtraction, multiplication, division, modulus, or power.",
+      "important_variables": [
+        {
+          "variable": "a",
+          "purpose": "store the two operands"
+        },
+        {
+          "variable": "choice",
+          "purpose": "stores the selected menu operation"
+        }
+      ],
+      "what_i_observed": "The program executed successfully."
+    },
+    "P7": {
+      "status": "detected",
+      "source_pages": [
+        2
+      ],
+      "problem_understanding": "The problem was to exchange two integer values without using a third temporary variable.",
+      "logic_approach": "Changed the values using arithmetic operations so that the original values were exchanged.",
+      "important_variables": [
+        {
+          "variable": "a",
+          "purpose": "hold the two values being exchanged"
+        }
+      ],
+      "what_i_observed": "I noticed that the values can be exchanged without declaring a separate temporary variable."
+    },
+    "P8": {
+      "status": "detected",
+      "source_pages": [
+        2,
+        3,
+        5
+      ],
+      "problem_understanding": "The problem was to exchange two values using a temporary variable.",
+      "logic_approach": "Stored the first value in a temporary variable, moved the second value into the first variable, and then restored the saved value into the second variable.",
+      "important_variables": [
+        {
+          "variable": "a",
+          "purpose": "hold the values to swap"
+        },
+        {
+          "variable": "temp",
+          "purpose": "temporarily stores one value"
+        }
+      ],
+      "what_i_observed": "The output was correct."
+    },
+    "P9": {
+      "status": "detected",
+      "source_pages": [
+        1,
+        3
+      ],
+      "problem_understanding": "The problem was to determine whether a positive integer is a perfect square without using sqrt.",
+      "logic_approach": "Repeatedly increased a candidate value and compared its square with the input. The process stopped when the square reached or exceeded the input.",
+      "important_variables": [
+        {
+          "variable": "n",
+          "purpose": "stores the input number"
+        },
+        {
+          "variable": "i",
+          "purpose": "stores the current candidate"
+        }
+      ],
+      "what_i_observed": "I observed that the loop tests possible square roots one by one."
+    },
+    "P10": {
+      "status": "detected",
+      "source_pages": [
+        3
+      ],
+      "problem_understanding": "The problem was to assign a grade according to a student's marks.",
+      "logic_approach": "Compared the marks against grade ranges using if-else conditions. The first matching range determined the grade.",
+      "important_variables": [
+        {
+          "variable": "marks",
+          "purpose": "stores the student's marks"
+        },
+        {
+          "variable": "grade",
+          "purpose": "stores the resulting grade"
+        }
+      ],
+      "what_i_observed": "I noticed that the order of the conditions matters because the first matching range is selected."
+    },
+    "P11": {
+      "status": "detected",
+      "source_pages": [
+        3
+      ],
+      "problem_understanding": "The problem was to create a calculator menu that also handles invalid choices and division by zero.",
+      "logic_approach": "Used a switch statement to select the requested operation and added a default case for an invalid choice. Before division I checked whether the divisor was zero.",
+      "important_variables": [
+        {
+          "variable": "choice",
+          "purpose": "stores the selected operation"
+        },
+        {
+          "variable": "a",
+          "purpose": "store operands"
+        },
+        {
+          "variable": "b",
+          "purpose": "store operands"
+        }
+      ],
+      "what_i_observed": "I noticed that division by zero must be handled separately to avoid an invalid calculation."
+    },
+    "P12": {
+      "status": "detected",
+      "source_pages": [
+        3,
+        4
+      ],
+      "problem_understanding": "The problem was to find the largest among three numbers.",
+      "logic_approach": "Used conditional expressions to compare the values and retain the largest one.",
+      "important_variables": [
+        {
+          "variable": "a",
+          "purpose": "store the three input values"
+        },
+        {
+          "variable": "b",
+          "purpose": "store the three input values"
+        },
+        {
+          "variable": "c",
+          "purpose": "store the three input values"
+        },
+        {
+          "variable": "largest",
+          "purpose": "stores the largest value"
+        }
+      ],
+      "what_i_observed": "I observed that the ternary operator can express a simple conditional selection compactly."
+    },
+    "P13": {
+      "status": "detected",
+      "source_pages": [
+        4
+      ],
+      "problem_understanding": "The problem was to convert a grade point into a corresponding letter grade.",
+      "logic_approach": "Used a switch-based mapping to associate the supplied grade point with its letter grade.",
+      "important_variables": [
+        {
+          "variable": "gradePoint",
+          "purpose": "stores the grade point"
+        },
+        {
+          "variable": "letter",
+          "purpose": "stores the resulting letter grade"
+        }
+      ],
+      "what_i_observed": "I observed that a switch statement is useful when several discrete values map to predefined results."
+    }
+  },
+  "detected_programs": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7",
+    "P8",
+    "P9",
+    "P10",
+    "P11",
+    "P12",
+    "P13"
+  ],
+  "missing_programs": [],
+  "errors": []
+}

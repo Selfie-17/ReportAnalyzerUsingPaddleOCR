@@ -172,3 +172,60 @@ def test_run_paddle_worker_sync_custom_timeout_expiry(mock_subproc):
     assert res.get("success") is False
     assert "timed out after 10 seconds" in res.get("error")
 
+
+@patch("batch_processor.run_paddle_worker_sync", side_effect=mock_ocr_success)
+@patch("batch_processor.extract_observation_report", side_effect=mock_extraction_success)
+def test_rerun_evaluations_on_extracted(mock_ext, mock_ocr):
+    with tempfile.TemporaryDirectory() as base_dir:
+        s1_dir = os.path.join(base_dir, "22001")
+        s2_dir = os.path.join(base_dir, "22002")
+        os.makedirs(s1_dir)
+        os.makedirs(s2_dir)
+
+        s1_file = os.path.join(s1_dir, "obs.pdf")
+        s2_file = os.path.join(s2_dir, "obs.pdf")
+        with open(s1_file, "w") as f:
+            f.write("content 1")
+        with open(s2_file, "w") as f:
+            f.write("content 2")
+
+        discovered = {
+            "22001": {"file_path": s1_file, "error": None},
+            "22002": {"file_path": s2_file, "error": None},
+        }
+
+        output_dir = os.path.join(base_dir, "output")
+        pipeline = BatchPipeline(week_id="week-01", section_id="SEC1", output_dir=output_dir)
+
+        # Initial batch run
+        manifest = pipeline.run_batch(discovered)
+        assert manifest.successful == 2
+        assert mock_ocr.call_count == 2
+        assert mock_ext.call_count == 2
+
+        # Reset call counts
+        mock_ocr.reset_mock()
+        mock_ext.reset_mock()
+
+        # Now re-run evaluations on extracted text for 22001 only
+        with patch("batch_processor.verify_observation_report_sync", return_value="# Re-evaluated Report: 10/10") as mock_verify:
+            manifest_rerun = pipeline.rerun_evaluations_on_extracted(
+                discovered_students=discovered,
+                selected_student_ids=["22001"]
+            )
+            assert mock_verify.call_count == 1
+            # OCR and Extraction must NOT have been called again!
+            assert mock_ocr.call_count == 0
+            assert mock_ext.call_count == 0
+
+        # Verify student JSON updated
+        s1_json = os.path.join(pipeline.students_dir, "22001.json")
+        with open(s1_json, "r", encoding="utf-8") as f:
+            s1_data = json.load(f)
+        assert s1_data["evaluation"] == "# Re-evaluated Report: 10/10"
+
+        # Verify standalone evaluation md updated
+        s1_md = os.path.join(pipeline.students_dir, "22001_evaluation.md")
+        with open(s1_md, "r", encoding="utf-8") as f:
+            assert f.read() == "# Re-evaluated Report: 10/10"
+

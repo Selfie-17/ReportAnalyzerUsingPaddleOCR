@@ -415,19 +415,21 @@ class BatchPipeline:
         temperature: float = 0.1,
         python_exe: Optional[str] = None,
         assigned_questions: Optional[str] = None,
+        instruction_manual: Optional[str] = None,
         ocr_timeout: Optional[int] = None,
         enable_evaluation: bool = True,
         **kwargs
     ):
         self.week_id = week_id.strip()
         self.section_id = section_id.strip() if section_id else None
-        q_val = assigned_questions or kwargs.get("assigned_questions")
-        if not q_val:
-            from verifier import WEEK1_13_PROGRAMS_PRESET
-            q_val = WEEK1_13_PROGRAMS_PRESET
+        self.python_exe = python_exe or kwargs.get("python_exe") or get_paddle_python()
+        q_val = assigned_questions if assigned_questions is not None else kwargs.get("assigned_questions")
         self.assigned_questions = q_val.strip() if (q_val and isinstance(q_val, str)) else None
+        man_val = instruction_manual if instruction_manual is not None else kwargs.get("instruction_manual")
+        self.instruction_manual = man_val.strip() if (man_val and isinstance(man_val, str)) else None
         self.ocr_timeout = ocr_timeout if ocr_timeout is not None else kwargs.get("ocr_timeout", None)
         self.enable_evaluation = enable_evaluation if enable_evaluation is not None else kwargs.get("enable_evaluation", True)
+        self.evaluate_extracted_text = kwargs.get("evaluate_extracted_text", True)
 
         # Sanitize section_id against path traversal
         if self.section_id and (".." in self.section_id or "/" in self.section_id or "\\" in self.section_id):
@@ -640,11 +642,12 @@ class BatchPipeline:
 
                         ext_dict = data.get("extraction", {})
                         ocr_txt = data.get("ocr", {}).get("text", "")
-                        eval_text = format_extraction_for_evaluation(ext_dict, fallback_text=ocr_txt)
+                        eval_text = ocr_txt.strip() if ocr_txt and ocr_txt.strip() else format_extraction_for_evaluation(ext_dict, fallback_text=ocr_txt)
                         try:
                             eval_md = verify_observation_report_sync(
                                 report_text=eval_text,
                                 assigned_questions=self.assigned_questions,
+                                instruction_manual=self.instruction_manual,
                                 base_url=self.ollama_url,
                                 model=self.model,
                                 temperature=self.temperature
@@ -754,11 +757,15 @@ class BatchPipeline:
         if self.enable_evaluation:
             update("evaluating", "evaluation")
             setattr(status_entry, "evaluation_status", "running")
-            eval_text = format_extraction_for_evaluation(ext_res, fallback_text=ocr_text)
+            if getattr(self, "evaluate_extracted_text", True):
+                eval_text = format_extraction_for_evaluation(ext_res, fallback_text=ocr_text)
+            else:
+                eval_text = ocr_text.strip() if ocr_text and ocr_text.strip() else format_extraction_for_evaluation(ext_res, fallback_text=ocr_text)
             try:
                 eval_md = verify_observation_report_sync(
                     report_text=eval_text,
                     assigned_questions=self.assigned_questions,
+                    instruction_manual=self.instruction_manual,
                     base_url=self.ollama_url,
                     model=self.model,
                     temperature=self.temperature
@@ -888,6 +895,109 @@ class BatchPipeline:
         self.build_section_summary()
         return self.save_manifest()
 
+    def rerun_evaluations_on_extracted(
+        self,
+        discovered_students: Optional[Dict[str, Dict[str, Any]]] = None,
+        selected_student_ids: Optional[List[str]] = None,
+        progress_cb: Optional[Callable[[BatchStudentStatus], None]] = None
+    ) -> BatchManifest:
+        """
+        Re-runs Qwen rubric evaluation directly on already-extracted student text.
+        Skips re-running PaddleOCR and Qwen structured extraction when extraction
+        already exists on disk.
+        Updates student JSON files, standalone evaluation markdown files,
+        section aggregated JSON, section summary, and manifest.
+        """
+        if discovered_students is None:
+            discovered_students = {}
+            if os.path.exists(self.students_dir):
+                for fname in os.listdir(self.students_dir):
+                    if fname.endswith(".json") and not any(fname.endswith(sfx) for sfx in ("_manifest.json", "_summary.json", "_reports.json", "_observation_reports.json")):
+                        sid = os.path.splitext(fname)[0]
+                        discovered_students[sid] = {"file_path": os.path.join(self.students_dir, fname)}
+
+        for sid, info in discovered_students.items():
+            if selected_student_ids is not None and sid not in selected_student_ids:
+                continue
+
+            status_entry = self.state.setdefault(
+                sid,
+                BatchStudentStatus(
+                    student_id=sid,
+                    section_id=self.section_id,
+                    status="pending"
+                )
+            )
+
+            out_json = os.path.join(self.students_dir, f"{sid}.json")
+            if os.path.exists(out_json):
+                try:
+                    with open(out_json, "r", encoding="utf-8") as f:
+                        student_data = json.load(f)
+
+                    ext_data = student_data.get("extraction")
+                    ocr_data = student_data.get("ocr", {})
+                    ocr_text = ocr_data.get("text", "") if isinstance(ocr_data, dict) else ""
+
+                    if ext_data and isinstance(ext_data, dict) and ext_data.get("status") in ("success", "partial"):
+                        status_entry.status = "evaluating"
+                        status_entry.stage = "evaluation"
+                        setattr(status_entry, "evaluation_status", "running")
+                        if progress_cb:
+                            progress_cb(status_entry)
+
+                        eval_text = format_extraction_for_evaluation(ext_data, fallback_text=ocr_text)
+                        try:
+                            eval_md = verify_observation_report_sync(
+                                report_text=eval_text,
+                                assigned_questions=self.assigned_questions,
+                                instruction_manual=self.instruction_manual,
+                                base_url=self.ollama_url,
+                                model=self.model,
+                                temperature=self.temperature
+                            )
+                            setattr(status_entry, "evaluation_status", "completed")
+                        except Exception as e:
+                            eval_md = f"⚠️ Evaluation error: {str(e)}"
+                            setattr(status_entry, "evaluation_status", "failed")
+
+                        student_data["evaluation"] = eval_md
+                        atomic_write_json(out_json, student_data)
+
+                        # Write standalone markdown
+                        eval_md_path = os.path.join(self.students_dir, f"{sid}_evaluation.md")
+                        try:
+                            with open(eval_md_path, "w", encoding="utf-8") as f:
+                                f.write(eval_md or "")
+                        except Exception:
+                            pass
+
+                        status_entry.status = "completed"
+                        status_entry.stage = None
+                        status_entry.error = None
+                        if progress_cb:
+                            progress_cb(status_entry)
+                        self.save_manifest()
+                        continue
+                except Exception:
+                    # Fallback to standard process_student if JSON parsing or update failed
+                    pass
+
+            # If student does not have existing extraction, run standard process_student
+            self.process_student(
+                student_id=sid,
+                file_path=info.get("file_path"),
+                error_precheck=info.get("error"),
+                progress_cb=progress_cb
+            )
+            self.save_manifest()
+
+        # Rebuild section deliverables
+        self.build_complete_section_json()
+        self.build_section_summary()
+        self.create_batch_zip()
+        return self.save_manifest()
+
     def run_batch(
         self,
         discovered_students: Dict[str, Dict[str, Any]],
@@ -967,7 +1077,14 @@ class BatchPipeline:
         Computes section-level summary statistics including exact P1..P10 detection tallies
         derived directly from persisted student JSON files. Never asks LLM for counts.
         """
-        program_counts = {f"P{i}": 0 for i in range(1, 11)}
+        # Initialize program detection dynamically from assigned questions or fallback to P1..P10
+        from verifier import parse_assigned_questions
+        assigned_q_list = parse_assigned_questions(self.assigned_questions) if self.assigned_questions else []
+        if assigned_q_list:
+            program_counts = {f"P{q.question_number}": 0 for q in assigned_q_list}
+        else:
+            program_counts = {f"P{i}": 0 for i in range(1, 11)}
+
         successful = 0
         failed = 0
 
@@ -984,8 +1101,9 @@ class BatchPipeline:
                             progs = ext.get("programs", {})
                             for pkey, pdet in progs.items():
                                 if isinstance(pdet, dict) and pdet.get("status") == "detected":
-                                    if pkey in program_counts:
-                                        program_counts[pkey] += 1
+                                    if pkey not in program_counts:
+                                        program_counts[pkey] = 0
+                                    program_counts[pkey] += 1
                         elif data.get("status") == "failed":
                             failed += 1
                     except Exception:

@@ -1,0 +1,818 @@
+{
+  "objective": {
+    "requirement": "Objective of the Lab",
+    "status": "PRESENT",
+    "score": 2,
+    "max_score": 2,
+    "evidence": "I was trying to learn how basic C programming constructs work in practical programs, including input and output, arithmetic operations, conditions, switch statements, comparison, and the use of variables. I also wanted to understand how different inputs affect the result of a program.",
+    "evaluation": "Clear statement of laboratory objective.",
+    "reasoning": "Directly outlines programming concepts practiced.",
+    "confidence": "HIGH",
+    "grounded": true
+  },
+  "questions": [
+    {
+      "question_number": 1,
+      "question_text": "Write a C program to check whether a given number is even or odd.",
+      "match_status": "FOUND_AND_COVERED",
+      "match_confidence": "HIGH",
+      "matched_heading": "Program 1",
+      "match_evidence": [
+        "The problem was to determine whether an entered integer is even or odd."
+      ],
+      "confidence": "HIGH",
+      "score": 8,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "The problem was to determine whether an entered integer is even or odd.",
+          "evaluation": "Problem statement clearly explained.",
+          "reasoning": "Contains explanation of problem.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "Read the integer and used the remainder after division by 2. If the remainder was zero I treated it as even; otherwise it was odd. The condition selected the final message.",
+          "evaluation": "Approach and algorithms clearly explained.",
+          "reasoning": "Contains step-by-step logic.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "num: stores the entered integer\nremainder: stores the result of num % 2",
+          "evaluation": "Key variables and their roles listed.",
+          "reasoning": "Variables table present.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "I noticed that numbers divisible by 2 are classified as even, while numbers with a remainder of 1 are classified as odd.",
+          "evaluation": "Detailed runtime observation provided.",
+          "reasoning": "Observation present.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    },
+    {
+      "question_number": 2,
+      "question_text": "Write a C program to determine whether a given number is positive, negative, or zero.",
+      "match_status": "FOUND_AND_COVERED",
+      "match_confidence": "HIGH",
+      "matched_heading": "Program 2",
+      "match_evidence": [
+        "The problem was to classify an integer as positive, negative, or zero."
+      ],
+      "confidence": "HIGH",
+      "score": 8,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "The problem was to classify an integer as positive, negative, or zero.",
+          "evaluation": "Problem statement clearly explained.",
+          "reasoning": "Contains explanation of problem.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "Compared the input with zero. The first condition checked whether it was greater than zero, another checked whether it was less than zero, and otherwise it was zero.",
+          "evaluation": "Approach and algorithms clearly explained.",
+          "reasoning": "Contains step-by-step logic.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "num: stores the input value",
+          "evaluation": "Key variables and their roles listed.",
+          "reasoning": "Variables table present.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "I observed that zero needs its own case because it is neither positive nor negative.",
+          "evaluation": "Detailed runtime observation provided.",
+          "reasoning": "Observation present.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    },
+    {
+      "question_number": 3,
+      "question_text": "Write a C program to check whether an entered character is an uppercase letter, lowercase letter, digit, or special character.",
+      "match_status": "FOUND_AND_COVERED",
+      "match_confidence": "HIGH",
+      "matched_heading": "Program 3",
+      "match_evidence": [
+        "The problem was to identify whether an input character is uppercase, lowercase, a digit, or a special character."
+      ],
+      "confidence": "HIGH",
+      "score": 8,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "The problem was to identify whether an input character is uppercase, lowercase, a digit, or a special character.",
+          "evaluation": "Problem statement clearly explained.",
+          "reasoning": "Contains explanation of problem.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "Compared the character against the ranges for uppercase letters, lowercase letters, and digits. If it did not match any of these categories, I treated it as a special character.",
+          "evaluation": "Approach and algorithms clearly explained.",
+          "reasoning": "Contains step-by-step logic.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "ch: stores the input character",
+          "evaluation": "Key variables and their roles listed.",
+          "reasoning": "Variables table present.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "I observed that a character can be classified into different categories by checking its ASCII range.",
+          "evaluation": "Detailed runtime observation provided.",
+          "reasoning": "Observation present.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    },
+    {
+      "question_number": 4,
+      "question_text": "Write a C program to check whether a given year is a leap year or not.",
+      "match_status": "FOUND_AND_COVERED",
+      "match_confidence": "HIGH",
+      "matched_heading": "Program 4",
+      "match_evidence": [
+        "The problem was to determine whether a given year is a leap year."
+      ],
+      "confidence": "HIGH",
+      "score": 8,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "The problem was to determine whether a given year is a leap year.",
+          "evaluation": "Problem statement clearly explained.",
+          "reasoning": "Contains explanation of problem.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "Checked divisibility by 400, and otherwise checked the divisibility conditions involving 4 and 100. The combined conditions determined the result.",
+          "evaluation": "Approach and algorithms clearly explained.",
+          "reasoning": "Contains step-by-step logic.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "year: stores the entered year",
+          "evaluation": "Key variables and their roles listed.",
+          "reasoning": "Variables table present.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "I noticed that a year divisible by 100 is not normally a leap year unless it is also divisible by 400.",
+          "evaluation": "Detailed runtime observation provided.",
+          "reasoning": "Observation present.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    },
+    {
+      "question_number": 5,
+      "question_text": "Write a C program to display the memory allocation required for different C data types using the sizeof() operator.",
+      "match_status": "FOUND_AND_COVERED",
+      "match_confidence": "HIGH",
+      "matched_heading": "Program 5",
+      "match_evidence": [
+        "The problem was to find how much memory common C data types occupy."
+      ],
+      "confidence": "HIGH",
+      "score": 8,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "The problem was to find how much memory common C data types occupy.",
+          "evaluation": "Problem statement clearly explained.",
+          "reasoning": "Contains explanation of problem.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "Used sizeof with different data types and printed the returned sizes.",
+          "evaluation": "Approach and algorithms clearly explained.",
+          "reasoning": "Contains step-by-step logic.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "size: stores a size returned by sizeof",
+          "evaluation": "Key variables and their roles listed.",
+          "reasoning": "Variables table present.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "I observed that the size of a data type can depend on the compiler and system.",
+          "evaluation": "Detailed runtime observation provided.",
+          "reasoning": "Observation present.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    },
+    {
+      "question_number": 6,
+      "question_text": "Write a menu-based C program to perform addition, subtraction, multiplication, division, modulus, and power using a switch statement.",
+      "match_status": "FOUND_AND_COVERED",
+      "match_confidence": "HIGH",
+      "matched_heading": "Program 6",
+      "match_evidence": [
+        "The problem was to perform an arithmetic operation selected from a menu."
+      ],
+      "confidence": "HIGH",
+      "score": 6,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "The problem was to perform an arithmetic operation selected from a menu.",
+          "evaluation": "Problem statement clearly explained.",
+          "reasoning": "Contains explanation of problem.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "Read two numbers and a menu choice. A switch statement selected addition, subtraction, multiplication, division, modulus, or power.",
+          "evaluation": "Approach and algorithms clearly explained.",
+          "reasoning": "Contains step-by-step logic.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "a: store the two operands\nchoice: stores the selected menu operation",
+          "evaluation": "Key variables and their roles listed.",
+          "reasoning": "Variables table present.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "MISSING",
+          "score": 0,
+          "max_score": 2,
+          "evidence": "The program executed successfully.",
+          "evaluation": "[Flagged: Generic observation ('The program executed successfully.') does not provide program-specific evidence]",
+          "reasoning": "Generic statement penalized to 0.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    },
+    {
+      "question_number": 7,
+      "question_text": "Write a C program to swap two numbers without using a third/temporary variable.",
+      "match_status": "FOUND_AND_COVERED",
+      "match_confidence": "HIGH",
+      "matched_heading": "Program 7",
+      "match_evidence": [
+        "The problem was to exchange two integer values without using a third temporary variable."
+      ],
+      "confidence": "HIGH",
+      "score": 8,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "The problem was to exchange two integer values without using a third temporary variable.",
+          "evaluation": "Problem statement clearly explained.",
+          "reasoning": "Contains explanation of problem.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "Changed the values using arithmetic operations so that the original values were exchanged.",
+          "evaluation": "Approach and algorithms clearly explained.",
+          "reasoning": "Contains step-by-step logic.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "a: hold the two values being exchanged",
+          "evaluation": "Key variables and their roles listed.",
+          "reasoning": "Variables table present.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "I noticed that the values can be exchanged without declaring a separate temporary variable.",
+          "evaluation": "Detailed runtime observation provided.",
+          "reasoning": "Observation present.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    },
+    {
+      "question_number": 8,
+      "question_text": "Write a C program to swap two numbers using a temporary variable.",
+      "match_status": "FOUND_AND_COVERED",
+      "match_confidence": "HIGH",
+      "matched_heading": "Program 8",
+      "match_evidence": [
+        "The problem was to exchange two values using a temporary variable."
+      ],
+      "confidence": "HIGH",
+      "score": 6,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "The problem was to exchange two values using a temporary variable.",
+          "evaluation": "Problem statement clearly explained.",
+          "reasoning": "Contains explanation of problem.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "Stored the first value in a temporary variable, moved the second value into the first variable, and then restored the saved value into the second variable.",
+          "evaluation": "Approach and algorithms clearly explained.",
+          "reasoning": "Contains step-by-step logic.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "a: hold the values to swap\ntemp: temporarily stores one value",
+          "evaluation": "Key variables and their roles listed.",
+          "reasoning": "Variables table present.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "MISSING",
+          "score": 0,
+          "max_score": 2,
+          "evidence": "The output was correct.",
+          "evaluation": "[Flagged: Generic observation ('The output was correct.') does not provide program-specific evidence]",
+          "reasoning": "Generic statement penalized to 0.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    },
+    {
+      "question_number": 9,
+      "question_text": "Write a C program to check whether a given number is a perfect square without using the sqrt() library function.",
+      "match_status": "FOUND_AND_COVERED",
+      "match_confidence": "HIGH",
+      "matched_heading": "Program 9",
+      "match_evidence": [
+        "The problem was to determine whether a positive integer is a perfect square without using sqrt."
+      ],
+      "confidence": "HIGH",
+      "score": 8,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "The problem was to determine whether a positive integer is a perfect square without using sqrt.",
+          "evaluation": "Problem statement clearly explained.",
+          "reasoning": "Contains explanation of problem.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "Repeatedly increased a candidate value and compared its square with the input. The process stopped when the square reached or exceeded the input.",
+          "evaluation": "Approach and algorithms clearly explained.",
+          "reasoning": "Contains step-by-step logic.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "n: stores the input number\ni: stores the current candidate",
+          "evaluation": "Key variables and their roles listed.",
+          "reasoning": "Variables table present.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "I observed that the loop tests possible square roots one by one.",
+          "evaluation": "Detailed runtime observation provided.",
+          "reasoning": "Observation present.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    },
+    {
+      "question_number": 10,
+      "question_text": "Write a C program to calculate a student's grade based on marks using if-else statements.",
+      "match_status": "FOUND_AND_COVERED",
+      "match_confidence": "HIGH",
+      "matched_heading": "Program 10",
+      "match_evidence": [
+        "The problem was to assign a grade according to a student's marks."
+      ],
+      "confidence": "HIGH",
+      "score": 8,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "The problem was to assign a grade according to a student's marks.",
+          "evaluation": "Problem statement clearly explained.",
+          "reasoning": "Contains explanation of problem.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "Compared the marks against grade ranges using if-else conditions. The first matching range determined the grade.",
+          "evaluation": "Approach and algorithms clearly explained.",
+          "reasoning": "Contains step-by-step logic.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "marks: stores the student's marks\ngrade: stores the resulting grade",
+          "evaluation": "Key variables and their roles listed.",
+          "reasoning": "Variables table present.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "I noticed that the order of the conditions matters because the first matching range is selected.",
+          "evaluation": "Detailed runtime observation provided.",
+          "reasoning": "Observation present.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    },
+    {
+      "question_number": 11,
+      "question_text": "Write an extended menu-based C calculator that handles invalid menu choices and division by zero.",
+      "match_status": "FOUND_AND_COVERED",
+      "match_confidence": "HIGH",
+      "matched_heading": "Program 11",
+      "match_evidence": [
+        "The problem was to create a calculator menu that also handles invalid choices and division by zero."
+      ],
+      "confidence": "HIGH",
+      "score": 8,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "The problem was to create a calculator menu that also handles invalid choices and division by zero.",
+          "evaluation": "Problem statement clearly explained.",
+          "reasoning": "Contains explanation of problem.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "Used a switch statement to select the requested operation and added a default case for an invalid choice. Before division I checked whether the divisor was zero.",
+          "evaluation": "Approach and algorithms clearly explained.",
+          "reasoning": "Contains step-by-step logic.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "choice: stores the selected operation\na: store operands\nb: store operands",
+          "evaluation": "Key variables and their roles listed.",
+          "reasoning": "Variables table present.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "I noticed that division by zero must be handled separately to avoid an invalid calculation.",
+          "evaluation": "Detailed runtime observation provided.",
+          "reasoning": "Observation present.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    },
+    {
+      "question_number": 12,
+      "question_text": "Write a C program to find the largest of three numbers using the ternary operator.",
+      "match_status": "FOUND_AND_COVERED",
+      "match_confidence": "HIGH",
+      "matched_heading": "Program 12",
+      "match_evidence": [
+        "The problem was to find the largest among three numbers."
+      ],
+      "confidence": "HIGH",
+      "score": 8,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "The problem was to find the largest among three numbers.",
+          "evaluation": "Problem statement clearly explained.",
+          "reasoning": "Contains explanation of problem.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "Used conditional expressions to compare the values and retain the largest one.",
+          "evaluation": "Approach and algorithms clearly explained.",
+          "reasoning": "Contains step-by-step logic.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "a: store the three input values\nb: store the three input values\nc: store the three input values\nlargest: stores the largest value",
+          "evaluation": "Key variables and their roles listed.",
+          "reasoning": "Variables table present.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "I observed that the ternary operator can express a simple conditional selection compactly.",
+          "evaluation": "Detailed runtime observation provided.",
+          "reasoning": "Observation present.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    },
+    {
+      "question_number": 13,
+      "question_text": "Write a C program to convert a grade point to a letter grade using a switch statement.",
+      "match_status": "FOUND_AND_COVERED",
+      "match_confidence": "HIGH",
+      "matched_heading": "Program 13",
+      "match_evidence": [
+        "The problem was to convert a grade point into a corresponding letter grade."
+      ],
+      "confidence": "HIGH",
+      "score": 8,
+      "max_score": 8,
+      "requirements": [
+        {
+          "requirement": "Problem Understanding",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "The problem was to convert a grade point into a corresponding letter grade.",
+          "evaluation": "Problem statement clearly explained.",
+          "reasoning": "Contains explanation of problem.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Logic / Approach Used",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "Used a switch-based mapping to associate the supplied grade point with its letter grade.",
+          "evaluation": "Approach and algorithms clearly explained.",
+          "reasoning": "Contains step-by-step logic.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "Important Variables and Their Purpose",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "gradePoint: stores the grade point\nletter: stores the resulting letter grade",
+          "evaluation": "Key variables and their roles listed.",
+          "reasoning": "Variables table present.",
+          "confidence": "HIGH",
+          "grounded": true
+        },
+        {
+          "requirement": "What I Observed",
+          "status": "PRESENT",
+          "score": 2,
+          "max_score": 2,
+          "evidence": "I observed that a switch statement is useful when several discrete values map to predefined results.",
+          "evaluation": "Detailed runtime observation provided.",
+          "reasoning": "Observation present.",
+          "confidence": "HIGH",
+          "grounded": true
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total_assigned": 13,
+    "found_and_covered": 13,
+    "found_but_incomplete": 0,
+    "not_found": 0,
+    "coverage_percentage": 100.0,
+    "total_evidence_snippets": 53,
+    "grounded_evidence_snippets": 53,
+    "evidence_grounding_rate": 100.0,
+    "objective_status": "PRESENT",
+    "objective_score": 2,
+    "objective_max": 2,
+    "total_obtained": 102,
+    "total_max": 106,
+    "final_score": 9.62,
+    "final_score_out_of_10": 9.62,
+    "overall_assessment": "Excellent understanding demonstrated across the laboratory.",
+    "criteria_totals": {
+      "Problem Understanding": {
+        "obtained": 26,
+        "max": 26
+      },
+      "Logic / Approach Used": {
+        "obtained": 26,
+        "max": 26
+      },
+      "Important Variables and Their Purpose": {
+        "obtained": 26,
+        "max": 26
+      },
+      "What I Observed": {
+        "obtained": 22,
+        "max": 26
+      }
+    }
+  }
+}
