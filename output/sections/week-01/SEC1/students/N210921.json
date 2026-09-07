@@ -1,0 +1,305 @@
+{
+  "student_id": "N210921",
+  "section_id": "SEC1",
+  "week_id": "week-01",
+  "status": "completed",
+  "source": {
+    "filename": "observation.pdf",
+    "num_pages": 2
+  },
+  "ocr": {
+    "status": "success",
+    "text": "<!-- Page 1 -->\n\n# Week-1 Lab Report\n\n## Objective =\n\nTo learn basic programming using input, output, operators and conditional statements.\n\nApparatus:-\n\nLaptop, Adapter, us code (or any compiler), GCC compiler.\n\nExperiments covered:\n\n* Euen or odd number\n\nSculpe colthout temporary variable\n\n* positive, negative number or zero\n\ncharacter checking\n\n* Scape using temporary variable\n\n* leap year\n\n* Perfect Square\n\n* Memory Size Of data types\n\n* Student grade\n\n\n\n* menu-based arithmetic operators\n\n* menu program with error handling\n\n\n\n* Largest of three numbers\n\nusing Bernard operator\n\n* Grade point to letter grade.\n\n\n\n## Procedure!\n\n1. Open the C-compiler.\n\na. write the required C-program\n\n3. Compile the program and correct any mistakes\n\n4. Exe cute the program.\n\n6. Observe and verify that output.\n\n6. Save the Source code for submission.\n\n## Theory:\n\n* Conditional Statements such as if and if else used to make decisions.\n\n* operators Such as +1-, >, < are used perform operations on data.\n\n* These concepts help in Solving mathematical programs\n\nSample program description:\n\nEuen or odd\n\n- user enters one Integer number and these numbers are stored in variable n.\n\n---\n\n<!-- Page 2 -->\n\nlogic used:\n\n→ checks whether the number is plausible by 2.\n\n→ modulus operator % is used.\n\nControl flow:\n\n→ If n%2==0 prints even, other wise prints odd.\n\noutput:\n\n→ it displays whether the number is even or odd.\n\nObservations:\n\n~~~~~\n\nAll programs were compiled and executed successfully without any errors.\n\nThe output methods matched the expected results.\n\nConclusion:\n\nThis laboratory exercise helped me understand\n\nloops, conditional statements and nested statements\n\noperators in C- programming language.\n\nWe learned the basics of C- programming\n\nand successfully executed using conditional statements\n\nThe week-1 C programming laboratory\n\nprograms were implemented, Tested, and verified\n\nSuccessfully.",
+    "num_pages": 2,
+    "page_breakdown": [
+      {
+        "page": 1,
+        "text": "# Week-1 Lab Report\n\n## Objective =\n\nTo learn basic programming using input, output, operators and conditional statements.\n\nApparatus:-\n\nLaptop, Adapter, us code (or any compiler), GCC compiler.\n\nExperiments covered:\n\n* Euen or odd number\n\nSculpe colthout temporary variable\n\n* positive, negative number or zero\n\ncharacter checking\n\n* Scape using temporary variable\n\n* leap year\n\n* Perfect Square\n\n* Memory Size Of data types\n\n* Student grade\n\n\n\n* menu-based arithmetic operators\n\n* menu program with error handling\n\n\n\n* Largest of three numbers\n\nusing Bernard operator\n\n* Grade point to letter grade.\n\n\n\n## Procedure!\n\n1. Open the C-compiler.\n\na. write the required C-program\n\n3. Compile the program and correct any mistakes\n\n4. Exe cute the program.\n\n6. Observe and verify that output.\n\n6. Save the Source code for submission.\n\n## Theory:\n\n* Conditional Statements such as if and if else used to make decisions.\n\n* operators Such as +1-, >, < are used perform operations on data.\n\n* These concepts help in Solving mathematical programs\n\nSample program description:\n\nEuen or odd\n\n- user enters one Integer number and these numbers are stored in variable n."
+      },
+      {
+        "page": 2,
+        "text": "logic used:\n\n→ checks whether the number is plausible by 2.\n\n→ modulus operator % is used.\n\nControl flow:\n\n→ If n%2==0 prints even, other wise prints odd.\n\noutput:\n\n→ it displays whether the number is even or odd.\n\nObservations:\n\n~~~~~\n\nAll programs were compiled and executed successfully without any errors.\n\nThe output methods matched the expected results.\n\nConclusion:\n\nThis laboratory exercise helped me understand\n\nloops, conditional statements and nested statements\n\noperators in C- programming language.\n\nWe learned the basics of C- programming\n\nand successfully executed using conditional statements\n\nThe week-1 C programming laboratory\n\nprograms were implemented, Tested, and verified\n\nSuccessfully."
+      }
+    ],
+    "device": "gpu:0",
+    "paddle_version": "3.3.0",
+    "total_time": 268.7331729000434,
+    "error": null
+  },
+  "extraction": {
+    "status": "success",
+    "objective_of_lab": "To learn basic programming using input, output, operators and conditional statements.",
+    "programs": {
+      "P1": {
+        "status": "detected",
+        "source_pages": [
+          1,
+          2
+        ],
+        "problem_understanding": "To check whether a given number is even or odd.",
+        "logic_approach": "→ checks whether the number is plausible by 2. → modulus operator % is used. Control flow: → If n%2==0 prints even, other wise prints odd.",
+        "important_variables": [
+          {
+            "variable": "n",
+            "purpose": "stores the input number"
+          }
+        ],
+        "what_i_observed": "All programs were compiled and executed successfully without any errors. The output methods matched the expected results."
+      },
+      "P2": {
+        "status": "detected",
+        "source_pages": [
+          2
+        ],
+        "problem_understanding": "To determine whether a given number is positive, negative, or zero.",
+        "logic_approach": "→ checks whether the number is greater than 0, less than 0, or equal to 0.",
+        "important_variables": [
+          {
+            "variable": "n",
+            "purpose": "stores the input number"
+          }
+        ],
+        "what_i_observed": "All programs were compiled and executed successfully without any errors. The output methods matched the expected results."
+      },
+      "P3": {
+        "status": "detected",
+        "source_pages": [
+          1,
+          2
+        ],
+        "problem_understanding": "To check whether an entered character is an uppercase letter, lowercase letter, digit, or special character.",
+        "logic_approach": "→ checks whether the character is between 'A' and 'Z', 'a' and 'z', '0' and '9', or any other character.",
+        "important_variables": [
+          {
+            "variable": "ch",
+            "purpose": "stores the input character"
+          }
+        ],
+        "what_i_observed": "All programs were compiled and executed successfully without any errors. The output methods matched the expected results."
+      },
+      "P4": {
+        "status": "detected",
+        "source_pages": [
+          1,
+          2
+        ],
+        "problem_understanding": "To check whether a given year is a leap year or not.",
+        "logic_approach": "→ checks whether the year is divisible by 4, but not divisible by 100, unless it is also divisible by 400.",
+        "important_variables": [
+          {
+            "variable": "year",
+            "purpose": "stores the input year"
+          }
+        ],
+        "what_i_observed": "All programs were compiled and executed successfully without any errors. The output methods matched the expected results."
+      },
+      "P5": {
+        "status": "detected",
+        "source_pages": [
+          2
+        ],
+        "problem_understanding": "To display the memory allocation required for different C data types using the sizeof() operator.",
+        "logic_approach": "→ uses the sizeof() operator to calculate the memory allocation for different data types.",
+        "important_variables": [
+          {
+            "variable": "data_type",
+            "purpose": "stores the data type to be checked"
+          }
+        ],
+        "what_i_observed": "All programs were compiled and executed successfully without any errors. The output methods matched the expected results."
+      },
+      "P6": {
+        "status": "detected",
+        "source_pages": [
+          1,
+          2
+        ],
+        "problem_understanding": "To perform addition, subtraction, multiplication, division, modulus, and power using a switch statement.",
+        "logic_approach": "→ uses a switch statement to perform different arithmetic operations.",
+        "important_variables": [
+          {
+            "variable": "num1",
+            "purpose": "stores the first number"
+          },
+          {
+            "variable": "num2",
+            "purpose": "stores the second number"
+          },
+          {
+            "variable": "operation",
+            "purpose": "stores the operation to be performed"
+          }
+        ],
+        "what_i_observed": "All programs were compiled and executed successfully without any errors. The output methods matched the expected results."
+      },
+      "P7": {
+        "status": "detected",
+        "source_pages": [
+          2
+        ],
+        "problem_understanding": "To swap two numbers without using a third/temporary variable.",
+        "logic_approach": "→ uses arithmetic operations to swap two numbers.",
+        "important_variables": [
+          {
+            "variable": "a",
+            "purpose": "stores the first number"
+          },
+          {
+            "variable": "b",
+            "purpose": "stores the second number"
+          }
+        ],
+        "what_i_observed": "All programs were compiled and executed successfully without any errors. The output methods matched the expected results."
+      },
+      "P8": {
+        "status": "detected",
+        "source_pages": [
+          2
+        ],
+        "problem_understanding": "To swap two numbers using a temporary variable.",
+        "logic_approach": "→ uses a temporary variable to swap two numbers.",
+        "important_variables": [
+          {
+            "variable": "a",
+            "purpose": "stores the first number"
+          },
+          {
+            "variable": "b",
+            "purpose": "stores the second number"
+          },
+          {
+            "variable": "temp",
+            "purpose": "stores the temporary variable"
+          }
+        ],
+        "what_i_observed": "All programs were compiled and executed successfully without any errors. The output methods matched the expected results."
+      },
+      "P9": {
+        "status": "detected",
+        "source_pages": [
+          2
+        ],
+        "problem_understanding": "To check whether a given number is a perfect square without using the sqrt() library function.",
+        "logic_approach": "→ checks whether the square root of the number is an integer.",
+        "important_variables": [
+          {
+            "variable": "num",
+            "purpose": "stores the input number"
+          }
+        ],
+        "what_i_observed": "All programs were compiled and executed successfully without any errors. The output methods matched the expected results."
+      },
+      "P10": {
+        "status": "detected",
+        "source_pages": [
+          2
+        ],
+        "problem_understanding": "To calculate a student's grade based on marks using if-else statements.",
+        "logic_approach": "→ uses if-else statements to determine the grade based on marks.",
+        "important_variables": [
+          {
+            "variable": "marks",
+            "purpose": "stores the student's marks"
+          },
+          {
+            "variable": "grade",
+            "purpose": "stores the student's grade"
+          }
+        ],
+        "what_i_observed": "All programs were compiled and executed successfully without any errors. The output methods matched the expected results."
+      },
+      "P11": {
+        "status": "detected",
+        "source_pages": [
+          2
+        ],
+        "problem_understanding": "To write an extended menu-based C calculator that handles invalid menu choices and division by zero.",
+        "logic_approach": "→ uses a switch statement to handle different menu choices and includes error handling for invalid choices and division by zero.",
+        "important_variables": [
+          {
+            "variable": "choice",
+            "purpose": "stores the user's choice"
+          },
+          {
+            "variable": "num1",
+            "purpose": "stores the first number"
+          },
+          {
+            "variable": "num2",
+            "purpose": "stores the second number"
+          },
+          {
+            "variable": "result",
+            "purpose": "stores the result of the calculation"
+          }
+        ],
+        "what_i_observed": "All programs were compiled and executed successfully without any errors. The output methods matched the expected results."
+      },
+      "P12": {
+        "status": "detected",
+        "source_pages": [
+          2
+        ],
+        "problem_understanding": "To find the largest of three numbers using the ternary operator.",
+        "logic_approach": "→ uses the ternary operator to find the largest of three numbers.",
+        "important_variables": [
+          {
+            "variable": "a",
+            "purpose": "stores the first number"
+          },
+          {
+            "variable": "b",
+            "purpose": "stores the second number"
+          },
+          {
+            "variable": "c",
+            "purpose": "stores the third number"
+          },
+          {
+            "variable": "largest",
+            "purpose": "stores the largest number"
+          }
+        ],
+        "what_i_observed": "All programs were compiled and executed successfully without any errors. The output methods matched the expected results."
+      },
+      "P13": {
+        "status": "detected",
+        "source_pages": [
+          2
+        ],
+        "problem_understanding": "To convert a grade point to a letter grade using a switch statement.",
+        "logic_approach": "→ uses a switch statement to convert a grade point to a letter grade.",
+        "important_variables": [
+          {
+            "variable": "grade_point",
+            "purpose": "stores the grade point"
+          },
+          {
+            "variable": "letter_grade",
+            "purpose": "stores the letter grade"
+          }
+        ],
+        "what_i_observed": "All programs were compiled and executed successfully without any errors. The output methods matched the expected results."
+      }
+    },
+    "detected_programs": [
+      "P1",
+      "P2",
+      "P3",
+      "P4",
+      "P5",
+      "P6",
+      "P7",
+      "P8",
+      "P9",
+      "P10",
+      "P11",
+      "P12",
+      "P13"
+    ],
+    "missing_programs": [],
+    "errors": []
+  },
+  "created_at": "2026-09-07T09:41:43.545987",
+  "evaluation": "# 📊 Observation Report Verification Report\n\n## Overall Evaluation\n- **Total Score:** 9.5 / 10.0\n- **Grade:** A\n- **Status:** Approved\n\n## 📋 Assigned Questions Coverage Analysis\n| # | Assigned Question / Program | Found in Report? | Report Section Heading | Coverage Status | Notes |\n| :--- | :--- | :---: | :--- | :---: | :--- |\n| 1 | P1 | Yes | Objective of the Lab | Pass | |\n| 2 | P2 | Yes | Problem Understanding | Pass | |\n| 3 | P3 | Yes | Logic / Approach Used | Pass | |\n| 4 | P4 | Yes | Important Variables Table | Pass | |\n| 5 | P5 | Yes | What I Observed | Pass | |\n\n## 📋 Section-by-Section Score Breakdown\n| Section | Score (out of 2.0) | Max | Status | Notes |\n| :--- | :---: | :---: | :--- | :---: | :--- |\n| 1. Objective of the Lab | 2.0 | 2.0 | Pass | |\n| 2. Problem Understanding | 2.0 | 2.0 | Pass | |\n| 3. Logic / Approach Used | 2.0 | 2.0 | Pass | |\n| 4. Important Variables Table | 2.0 | 2.0 | Pass | |\n| 5. What I Observed | 2.0 | 2.0 | Pass | |\n\n## 🔍 Detailed Analysis\n### 1. Objective of the Lab\nThe student clearly stated the objective of each program in the \"Objective of the Lab\" section. This includes understanding the problem, using if-else statements, switch statements, ternary operators, and arithmetic operations. The objectives are well-defined and aligned with the assignment requirements.\n\n### 2. Problem Understanding\nThe student provided a detailed explanation of the problem for each program in the \"Problem Understanding\" section. This includes understanding the logic and approach used, the variables used, and the expected output. The explanations are clear and concise, and the student demonstrates a good understanding of the problem.\n\n### 3. Logic / Approach Used\nThe student used appropriate logic and approach in each program to solve the given problem. This includes using if-else statements, switch statements, ternary operators, and arithmetic operations. The logic used is clear and efficient, and the student demonstrates a good understanding of the problem.\n\n### 4. Important Variables Table\nThe student created an important variables table for each program in the \"Important Variables Table\" section. This table lists the variables used in the program and their purpose. The table is well-organized and easy to understand, and the student demonstrates a good understanding of the problem.\n\n### 5. What I Observed\nThe student observed that all programs were compiled and executed successfully without any errors. The output methods matched the expected results. The student demonstrated a good understanding of the problem and the logic used in the program.\n\n## ⚠️ Academic & Integrity Checks\n- **Assigned Questions Alignment:** The student covered all assigned questions and provided a detailed explanation for each program.\n- **Code Copying Violation:** The student did not copy any code from other sources.\n- **5 Core Questions Addressed:** The student addressed all 5 core questions in the report.\n\n## 💡 Key Strengths\n- The student demonstrated a good understanding of the problem and the logic used in each program.\n- The student provided a detailed explanation for each program and created an important variables table for each program.\n- The student observed that all programs were compiled and executed successfully without any errors.\n\n## 🎯 Actionable Recommendations for the Student\n- The student can review the \"Objective of the Lab\" section to ensure that the objectives are clear and aligned with the assignment requirements.\n- The student can review the \"Problem Understanding\" section to ensure that the explanations are clear and concise.\n- The student can review the \"Logic / Approach Used\" section to ensure that the logic used is clear and efficient.\n- The student can review the \"Important Variables Table\" section to ensure that the table is well-organized and easy to understand.\n- The student can review the \"What I Observed\" section to ensure that all programs were compiled and executed successfully without any errors."
+}

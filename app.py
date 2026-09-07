@@ -6,6 +6,8 @@ import os
 import json
 import time
 import zipfile
+import re
+import pandas as pd
 import pymupdf as fitz  # Modern PyMuPDF import for PDF preview and page rendering
 
 from verifier import (
@@ -13,6 +15,11 @@ from verifier import (
     stream_observation_verification,
     DEFAULT_OLLAMA_URL,
     DEFAULT_MODEL,
+    DEFAULT_MANUAL_QUESTIONS_PRESET,
+    WEEK1_13_PROGRAMS_PRESET,
+    OFFICIAL_INSTRUCTION_MANUAL,
+    format_extraction_for_evaluation,
+    parse_evaluation_scores,
 )
 from extractor import extract_observation_report
 from schemas import (
@@ -67,6 +74,9 @@ if "single_student_report" not in st.session_state:
 
 if "verification_result" not in st.session_state:
     st.session_state["verification_result"] = ""
+
+if "assigned_questions" not in st.session_state:
+    st.session_state["assigned_questions"] = WEEK1_13_PROGRAMS_PRESET
 
 if "debug_stdout" not in st.session_state:
     st.session_state["debug_stdout"] = ""
@@ -172,6 +182,42 @@ st.title("🔬 PaddleOCR-VL & Section-Wise Report Extractor")
 st.caption(
     "GPU-Accelerated Document OCR + Qwen 2.5 Coder 3B Conservative Structured JSON Extraction (Sections 1–6)"
 )
+
+# ============================================================
+# TOP CONFIGURATION: LAB SESSION ASSIGNMENT & EVALUATION CRITERIA
+# ============================================================
+with st.expander("📝 Assigned Lab Questions & Criteria (Basis for Report & Evaluation)", expanded=True):
+    st.caption(
+        "Specify the questions/problem statements assigned for this laboratory session. "
+        "These questions guide both Structured Extraction (identifying P1..P13 in Step 4) "
+        "and Instruction Manual Evaluation (Step 6 / Batch Mode)."
+    )
+    col_preset1, col_preset2, col_preset3, col_guide = st.columns([1.2, 1, 0.8, 1.5])
+    with col_preset1:
+        if st.button("📋 Load Week 1 (13 Programs)", use_container_width=True, help="Load 13 standard C programs for Week 1"):
+            st.session_state["assigned_questions"] = WEEK1_13_PROGRAMS_PRESET
+            st.rerun()
+    with col_preset2:
+        if st.button("📋 Manual (5 Programs)", use_container_width=True, help="Load 5 standard programs from instruction manual"):
+            st.session_state["assigned_questions"] = DEFAULT_MANUAL_QUESTIONS_PRESET
+            st.rerun()
+    with col_preset3:
+        if st.button("🗑️ Clear", use_container_width=True, help="Clear assigned questions"):
+            st.session_state["assigned_questions"] = ""
+            st.rerun()
+    with col_guide:
+        with st.popover("📖 View Official Instruction Manual"):
+            st.markdown(OFFICIAL_INSTRUCTION_MANUAL)
+
+    assigned_questions_top = st.text_area(
+        "Assigned Lab Questions / Problem Statements:",
+        value=st.session_state.get("assigned_questions", WEEK1_13_PROGRAMS_PRESET),
+        height=140,
+        placeholder="Enter the lab questions, e.g.:\n1. Write a C program to check whether a given number is even or odd.\n2. Write a C program to determine whether a given number is positive, negative, or zero...",
+        help="Specify the problems assigned to students for this lab session. Used across Single Report extraction/evaluation and Batch processing.",
+        key="top_assigned_questions"
+    )
+    st.session_state["assigned_questions"] = assigned_questions_top
 
 tab_single, tab_batch = st.tabs([
     "📄 Single Student Report",
@@ -522,7 +568,8 @@ with tab_single:
                         base_url=ollama_url,
                         model=selected_model,
                         temperature=temperature,
-                        page_breakdown=st.session_state["ocr_meta"].get("page_breakdown", [])
+                        page_breakdown=st.session_state["ocr_meta"].get("page_breakdown", []),
+                        assigned_questions=st.session_state.get("assigned_questions", "")
                     )
                     t_ext_total = time.perf_counter() - t_ext_start
 
@@ -560,37 +607,47 @@ with tab_single:
                 report = st.session_state["single_student_report"]
                 ext = report.extraction
 
+                # Sort programs canonically by program number
+                all_pkeys = sorted(
+                    list(ext.programs.keys()),
+                    key=lambda x: int(re.sub(r"\D", "", x)) if re.sub(r"\D", "", x) else 999
+                )
+                if not all_pkeys:
+                    all_pkeys = [f"P{i}" for i in range(1, 11)]
+
                 # Summary Metrics
                 c1, c2, c3, c4 = st.columns(4)
                 with c1:
                     st.metric("Extraction Status", ext.status.upper())
                 with c2:
-                    st.metric("Detected Programs", f"{len(ext.detected_programs)} / 10")
+                    st.metric("Detected Programs", f"{len(ext.detected_programs)} / {len(all_pkeys)}")
                 with c3:
-                    st.metric("Missing Programs", f"{len(ext.missing_programs)} / 10")
+                    st.metric("Missing Programs", f"{len(ext.missing_programs)} / {len(all_pkeys)}")
                 with c4:
                     has_obj = "Present" if ext.objective_of_lab else "Not Detected"
                     st.metric("Lab Objective", has_obj)
 
-                # Program status badges
-                badge_cols = st.columns(10)
-                for i, b_col in enumerate(badge_cols, start=1):
-                    pkey = f"P{i}"
-                    pdet = ext.programs.get(pkey)
-                    is_det = pdet and pdet.status == "detected"
-                    with b_col:
-                        if is_det:
-                            st.success(f"**{pkey}**\n\n✓ Detected")
-                        else:
-                            st.caption(f"**{pkey}**\n\n— Absent")
+                # Program status badges (in rows of up to 10 columns)
+                for row_start in range(0, len(all_pkeys), 10):
+                    row_keys = all_pkeys[row_start:row_start + 10]
+                    badge_cols = st.columns(len(row_keys))
+                    for pkey, b_col in zip(row_keys, badge_cols):
+                        pdet = ext.programs.get(pkey)
+                        is_det = pdet and pdet.status == "detected"
+                        with b_col:
+                            if is_det:
+                                st.success(f"**{pkey}**\n\n✓ Detected")
+                            else:
+                                st.caption(f"**{pkey}**\n\n— Absent")
 
                 if ext.objective_of_lab:
                     with st.expander("🎯 Extracted Objective of Lab", expanded=True):
                         st.write(ext.objective_of_lab)
 
                 # Detailed Program Cards
-                with st.expander("🔍 Detailed Program Breakdown (P1..P10)", expanded=True):
-                    for pkey in [f"P{i}" for i in range(1, 11)]:
+                range_label = f"{all_pkeys[0]}..{all_pkeys[-1]}" if len(all_pkeys) > 1 else all_pkeys[0]
+                with st.expander(f"🔍 Detailed Program Breakdown ({range_label})", expanded=True):
+                    for pkey in all_pkeys:
                         pdet = ext.programs.get(pkey)
                         if not pdet:
                             continue
@@ -632,36 +689,100 @@ with tab_single:
                 with st.expander("📄 View Canonical JSON Payload"):
                     st.code(json_str, language="json")
 
-            # STEP 6: OPTIONAL MARKDOWN RUBRIC VERIFICATION (PRESERVED STANDALONE)
+            # STEP 6: EVALUATION & INSTRUCTION MANUAL RUBRIC VERIFICATION
             st.divider()
-            with st.expander("🧪 Step 6: Standalone Markdown Rubric Verification (Instruction Manual Verifier)"):
-                st.caption(
-                    "Optional prototype verification engine: Evaluates the report text against the "
-                    "10.0-point Instruction Manual rubric using Ollama streaming."
-                )
+            st.subheader("🧪 Step 6: Evaluate Report with Instruction Manual & Rubric")
+            st.caption(
+                "Strictly verifies the student's report against the official Instruction Manual submission guide "
+                "and compares coverage against the assigned lab questions configured at the top."
+            )
 
+            assigned_q_val = st.session_state.get("assigned_questions", "").strip()
+            if assigned_q_val:
+                st.info("📋 **Assigned Questions Active:** Qwen will verify report coverage against the assigned questions configured at the top.")
+            else:
+                st.warning("⚠️ No assigned questions specified at the top. Qwen will evaluate using general rubric criteria only.")
+
+            with st.expander("📝 Review / Quick-Edit Assigned Questions for this Evaluation", expanded=False):
+                step6_assigned_val = st.text_area(
+                    "Assigned Lab Questions / Problem Statements:",
+                    value=st.session_state.get("assigned_questions", DEFAULT_MANUAL_QUESTIONS_PRESET),
+                    height=120,
+                    help="Modify here if you wish to override the questions configured at the top for this evaluation.",
+                    key="step6_assigned_questions"
+                )
+                if step6_assigned_val != st.session_state.get("assigned_questions"):
+                    st.session_state["assigned_questions"] = step6_assigned_val
+
+            # Option to choose text source: Raw/Edited OCR text vs Structured Report (if available)
+            source_options = ["Clean Edited OCR Text"]
+            has_structured = st.session_state.get("single_student_report") is not None
+            if has_structured:
+                source_options.append("Structured Canonical JSON Summary (from Step 4)")
+
+            eval_source = st.radio(
+                "Text Source for Evaluation:",
+                options=source_options,
+                index=0,
+                horizontal=True,
+                help="Select which version of the student report to send to Qwen for verification."
+            )
+
+            # Determine text to evaluate
+            if eval_source == "Structured Canonical JSON Summary (from Step 4)" and has_structured:
+                rep: StudentObservationReport = st.session_state["single_student_report"]
+                text_for_eval = format_extraction_for_evaluation(
+                    rep.extraction,
+                    fallback_text=st.session_state.get("edited_text", "").strip()
+                )
+            else:
+                text_for_eval = st.session_state.get("edited_text", "").strip()
+
+            c_btn1, c_btn2 = st.columns([2, 1])
+            with c_btn1:
                 verify_clicked = st.button(
-                    "Evaluate Report with Instruction Manual Rubric",
+                    "🚀 Evaluate Report Against Assigned Questions & Rubric",
+                    type="primary",
+                    use_container_width=True,
                     key="btn_run_standalone_verifier"
                 )
+            with c_btn2:
+                if st.session_state.get("verification_result"):
+                    if st.button("🔄 Clear Evaluation Result", use_container_width=True):
+                        st.session_state["verification_result"] = ""
+                        st.rerun()
 
-                if verify_clicked:
-                    if not ollama_status["ok"]:
-                        st.error(f"Cannot connect to Ollama at {ollama_url}.")
-                    else:
-                        eval_container = st.empty()
-                        with st.spinner("Generating rubric evaluation..."):
-                            stream_gen = stream_observation_verification(
-                                report_text=st.session_state["edited_text"].strip(),
-                                base_url=ollama_url,
-                                model=selected_model,
-                                temperature=temperature
-                            )
-                            final_eval = eval_container.write_stream(stream_gen)
-                            st.session_state["verification_result"] = final_eval
+            if verify_clicked:
+                if not ollama_status["ok"]:
+                    st.error(f"Cannot connect to Ollama at {ollama_url}. Please ensure Ollama is running.")
+                elif not text_for_eval:
+                    st.warning("Cannot evaluate empty report text.")
+                else:
+                    eval_container = st.empty()
+                    with st.spinner("Evaluating report against assigned questions and Instruction Manual rubric..."):
+                        stream_gen = stream_observation_verification(
+                            report_text=text_for_eval,
+                            assigned_questions=st.session_state.get("assigned_questions", "").strip(),
+                            base_url=ollama_url,
+                            model=selected_model,
+                            temperature=temperature
+                        )
+                        final_eval = eval_container.write_stream(stream_gen)
+                        st.session_state["verification_result"] = final_eval
 
-                if st.session_state.get("verification_result") and not verify_clicked:
-                    st.markdown(st.session_state["verification_result"])
+            if st.session_state.get("verification_result") and not verify_clicked:
+                st.markdown(st.session_state["verification_result"])
+
+            if st.session_state.get("verification_result"):
+                eval_filename = f"{os.path.splitext(uploaded_file.name)[0]}_evaluation.md"
+                st.download_button(
+                    label="📥 Download Evaluation Report (.md)",
+                    data=st.session_state["verification_result"],
+                    file_name=eval_filename,
+                    mime="text/markdown",
+                    use_container_width=True,
+                    key="btn_download_eval_report"
+                )
 
 
 # ============================================================
@@ -764,8 +885,12 @@ with tab_batch:
                 ollama_url=ollama_url,
                 model=selected_model,
                 temperature=temperature,
-                python_exe=get_paddle_python()
+                python_exe=get_paddle_python(),
+                assigned_questions=st.session_state.get("assigned_questions", ""),
+                enable_evaluation=True
             )
+            # Safely set assigned questions for batch pipeline
+            pipeline.assigned_questions = st.session_state.get("assigned_questions", "")
 
             # Student Extraction Scope Selector
             st.divider()
@@ -830,7 +955,8 @@ with tab_batch:
             table_placeholder = st.empty()
 
             def update_dashboard():
-                students_list = list(pipeline.state.values())
+                # Filter pipeline state to strictly the students belonging to the current discovered batch
+                students_list = [pipeline.state[sid] for sid in discovered if sid in pipeline.state]
                 total = len(discovered)
                 target_count = len(selected_student_ids)
                 completed = sum(1 for s in students_list if s.status == "completed")
@@ -859,14 +985,20 @@ with tab_batch:
                     in_target = sid in selected_student_ids
                     scope_display = "🎯 Target" if in_target else "⚪ Outside"
 
-                    ocr_mark = "✓" if st_entry and st_entry.ocr_status == "completed" else ("✗" if st_entry and st_entry.ocr_status == "failed" else "—")
-                    ext_mark = "✓" if st_entry and st_entry.extraction_status == "completed" else ("✗" if st_entry and st_entry.extraction_status == "failed" else "—")
+                    ocr_st = getattr(st_entry, "ocr_status", None) if st_entry else None
+                    ext_st = getattr(st_entry, "extraction_status", None) if st_entry else None
+                    eval_st = getattr(st_entry, "evaluation_status", None) if st_entry else None
+
+                    ocr_mark = "✓" if ocr_st == "completed" else ("✗" if ocr_st == "failed" else ("⏳" if ocr_st == "running" else "—"))
+                    ext_mark = "✓" if ext_st == "completed" else ("✗" if ext_st == "failed" else ("⏳" if ext_st == "running" else "—"))
+                    eval_mark = "✓" if eval_st == "completed" else ("✗" if eval_st == "failed" else ("⏳" if eval_st == "running" else "—"))
 
                     status_display = {
                         "completed": "✅ Completed",
                         "processing_ocr": "⚡ Running OCR",
                         "ocr_complete": "📑 OCR Done",
                         "extracting": "🧠 Extracting",
+                        "evaluating": "📊 Evaluating",
                         "failed": "❌ Failed",
                         "pending": "⏳ Pending"
                     }.get(cur_st, cur_st)
@@ -877,6 +1009,7 @@ with tab_batch:
                         "Status": status_display,
                         "OCR": ocr_mark,
                         "Extraction": ext_mark,
+                        "Evaluation": eval_mark,
                         "Error / Details": err[:65] if err else "-"
                     })
 
@@ -896,7 +1029,12 @@ with tab_batch:
                     st.stop()
 
                 def on_progress(entry):
-                    stage_name = "OCR (GPU:0)" if entry.stage == "ocr" else ("Structured extraction (Qwen)" if entry.stage == "extraction" else (entry.stage or "Processing"))
+                    stage_name = (
+                        "OCR (GPU:0)" if entry.stage == "ocr"
+                        else ("Structured extraction (Qwen)" if entry.stage == "extraction"
+                        else ("Rubric Evaluation (Qwen)" if entry.stage == "evaluation"
+                        else (entry.stage or "Processing")))
+                    )
                     live_stage_box.info(f"📍 **Currently processing:** Student `{entry.student_id}` | **Stage:** `{stage_name}`")
                     update_dashboard()
 
@@ -965,43 +1103,203 @@ with tab_batch:
                             use_container_width=True
                         )
 
-            # Interactive Student JSON Inspector
+            # Interactive Student & Section Report Explorer
             student_json_files = []
             if os.path.exists(pipeline.students_dir):
                 student_json_files = sorted([os.path.splitext(f)[0] for f in os.listdir(pipeline.students_dir) if f.endswith(".json")])
 
             if student_json_files:
                 st.divider()
-                st.subheader("🔍 Inspect Student Report")
-                inspected_sid = st.selectbox("Select student to inspect:", student_json_files, key="select_inspect_student")
-                if inspected_sid:
-                    json_path = os.path.join(pipeline.students_dir, f"{inspected_sid}.json")
-                    if os.path.exists(json_path):
-                        with open(json_path, "r", encoding="utf-8") as f:
-                            st_data = json.load(f)
+                st.subheader("🔍 Cohort Deliverables & Report Inspector")
+                
+                inspect_mode = st.radio(
+                    "Select View:",
+                    options=["👤 Single Student Report & Evaluation", "🌐 Entire Section Aggregated JSON (All Students)"],
+                    horizontal=True,
+                    key="cohort_inspect_mode"
+                )
 
-                        st.write(f"**Student ID:** `{inspected_sid}` | **Section:** `{st_data.get('section_id', batch_section_id)}` | **Week:** `{st_data.get('week_id', batch_week_id)}` | **Status:** `{st_data.get('status', 'unknown').upper()}`")
+                if inspect_mode == "👤 Single Student Report & Evaluation":
+                    inspected_sid = st.selectbox("Select student to inspect:", student_json_files, key="select_inspect_student")
+                    if inspected_sid:
+                        json_path = os.path.join(pipeline.students_dir, f"{inspected_sid}.json")
+                        if os.path.exists(json_path):
+                            with open(json_path, "r", encoding="utf-8") as f:
+                                st_data = json.load(f)
 
-                        if st_data.get("status") == "failed":
-                            err_info = st_data.get("error", {})
-                            st.error(f"❌ **Stage:** {err_info.get('stage')} | **Error:** {err_info.get('message')}")
-                        else:
-                            ext_data = st_data.get("extraction", {})
-                            det_progs = ext_data.get("detected_programs", [])
-                            miss_progs = ext_data.get("missing_programs", [])
-                            st.success(f"Detected {len(det_progs)} programs: {', '.join(det_progs) or 'None'}")
-                            if miss_progs:
-                                st.caption(f"Missing programs: {', '.join(miss_progs)}")
+                            eval_text = st_data.get("evaluation")
+                            eval_scores = parse_evaluation_scores(eval_text) if eval_text else {}
 
+                            # Summary Banner with Scores & Status
+                            st.write(f"**Student ID:** `{inspected_sid}` | **Section:** `{st_data.get('section_id', batch_section_id)}` | **Week:** `{st_data.get('week_id', batch_week_id)}`")
+                            
+                            if st_data.get("status") == "failed":
+                                err_info = st_data.get("error", {})
+                                st.error(f"❌ **Stage:** {err_info.get('stage')} | **Error:** {err_info.get('message')}")
+                            else:
+                                score_col1, score_col2, score_col3, score_col4 = st.columns(4)
+                                with score_col1:
+                                    score_col1.metric("Total Score", eval_scores.get("score_display", "—"))
+                                with score_col2:
+                                    score_col2.metric("Grade", eval_scores.get("grade", "—"))
+                                with score_col3:
+                                    score_col3.metric("Status / Verdict", eval_scores.get("status", "—"))
+                                with score_col4:
+                                    score_col4.metric("Questions Addressed", eval_scores.get("questions_covered", "—"))
+
+                            # Student Details Tabs
+                            t_eval, t_extract, t_ocr, t_json = st.tabs([
+                                "📊 Rubric Evaluation Report",
+                                "🧠 Structured Extraction (5 Sections)",
+                                "📑 Raw OCR Scanned Text",
+                                "📄 Student JSON Payload"
+                            ])
+
+                            with t_eval:
+                                if eval_text:
+                                    st.markdown(eval_text)
+                                    st.download_button(
+                                        label=f"📥 Download {inspected_sid}_evaluation.md",
+                                        data=eval_text,
+                                        file_name=f"{inspected_sid}_evaluation.md",
+                                        mime="text/markdown",
+                                        type="primary",
+                                        key=f"dl_eval_inspect_{inspected_sid}"
+                                    )
+                                else:
+                                    st.info("ℹ️ Evaluation has not been generated for this student yet. Click 'Resume Incomplete Work' above to run evaluation.")
+
+                            with t_extract:
+                                ext_data = st_data.get("extraction", {})
+                                det_progs = ext_data.get("detected_programs", [])
+                                miss_progs = ext_data.get("missing_programs", [])
+                                st.success(f"**Detected Programs ({len(det_progs)}):** {', '.join(det_progs) or 'None'}")
+                                if miss_progs:
+                                    st.caption(f"**Missing Programs:** {', '.join(miss_progs)}")
+                                
+                                progs_dict = ext_data.get("programs", {})
+                                for p_code, p_info in progs_dict.items():
+                                    with st.expander(f"📌 Program {p_code} Details", expanded=False):
+                                        st.markdown(f"**Problem Understanding:** {p_info.get('problem_understanding') or 'Not provided'}")
+                                        st.markdown(f"**Logic / Approach:** {p_info.get('logic_approach') or 'Not provided'}")
+                                        v_list = p_info.get("important_variables", [])
+                                        if v_list:
+                                            st.markdown("**Important Variables:**")
+                                            var_df = []
+                                            for v in v_list:
+                                                vname = v.get("variable", "") if isinstance(v, dict) else getattr(v, "variable", str(v))
+                                                vpurp = v.get("purpose", "") if isinstance(v, dict) else getattr(v, "purpose", "")
+                                                var_df.append({"Variable": vname, "Purpose": vpurp})
+                                            st.dataframe(var_df, use_container_width=True)
+                                        st.markdown(f"**What I Observed:** {p_info.get('what_i_observed') or 'Not provided'}")
+
+                            with t_ocr:
+                                ocr_data = st_data.get("ocr", {})
+                                st.write(f"**Device:** `{ocr_data.get('device', 'gpu:0')}` | **Pages:** `{ocr_data.get('num_pages', 1)}` | **Total Time:** `{ocr_data.get('total_time', 0.0):.1f}s`")
+                                page_breakdown = ocr_data.get("page_breakdown", [])
+                                if page_breakdown:
+                                    for pb in page_breakdown:
+                                        with st.expander(f"📄 Page {pb.get('page', 1)} Raw Text", expanded=False):
+                                            st.markdown(pb.get("text", ""))
+                                else:
+                                    st.markdown(ocr_data.get("text", "No OCR text available."))
+
+                            with t_json:
+                                st.download_button(
+                                    label=f"📥 Download {inspected_sid}.json",
+                                    data=json.dumps(st_data, indent=2, ensure_ascii=False),
+                                    file_name=f"{inspected_sid}.json",
+                                    mime="application/json",
+                                    key=f"dl_json_inspect_{inspected_sid}"
+                                )
+                                st.json(st_data)
+
+                else:
+                    # Entire Section Aggregated JSON Viewer
+                    st.write(f"#### 🌐 Aggregated Section Observation Reports (`{os.path.basename(pipeline.complete_json_path)}`)")
+                    if os.path.exists(pipeline.complete_json_path):
+                        with open(pipeline.complete_json_path, "r", encoding="utf-8") as f:
+                            complete_data = json.load(f)
+
+                        st.write(f"**Section ID:** `{complete_data.get('section_id', batch_section_id)}` | **Week:** `{complete_data.get('week_id', batch_week_id)}` | **Total Students:** `{complete_data.get('total_students', len(student_json_files))}` | **Successful:** `{complete_data.get('successful', 0)}` | **Failed:** `{complete_data.get('failed', 0)}`")
+                        
                         st.download_button(
-                            label=f"📥 Download {inspected_sid}.json",
-                            data=json.dumps(st_data, indent=2, ensure_ascii=False),
-                            file_name=f"{inspected_sid}.json",
-                            mime="application/json"
+                            label=f"📥 Download Complete Section JSON ({os.path.basename(pipeline.complete_json_path)})",
+                            data=json.dumps(complete_data, indent=2, ensure_ascii=False),
+                            file_name=os.path.basename(pipeline.complete_json_path),
+                            mime="application/json",
+                            type="primary",
+                            key="dl_entire_section_json"
                         )
+                        st.json(complete_data)
+                    else:
+                        st.info("Aggregated section JSON file not found on disk yet.")
 
-                        with st.expander("📄 View Full JSON Payload"):
-                            st.json(st_data)
+                # ============================================================
+                # COHORT SCORES & EVALUATION SUMMARY TABLE
+                # ============================================================
+                st.divider()
+                st.subheader("📊 Cohort Scores & Evaluation Summary Table")
+                st.caption("Consolidated grading table and criteria breakdown for all students in this section.")
+
+                score_table_rows = []
+                total_scores_list = []
+
+                for sid in student_json_files:
+                    j_path = os.path.join(pipeline.students_dir, f"{sid}.json")
+                    if os.path.exists(j_path):
+                        try:
+                            with open(j_path, "r", encoding="utf-8") as f:
+                                s_data = json.load(f)
+                            e_text = s_data.get("evaluation", "")
+                            e_sc = parse_evaluation_scores(e_text) if e_text else {}
+                            if e_sc.get("total_score") is not None:
+                                total_scores_list.append(e_sc["total_score"])
+                            
+                            det_p = s_data.get("extraction", {}).get("detected_programs", [])
+                            det_p_str = f"{len(det_p)} ({', '.join(det_p[:6])}{'...' if len(det_p) > 6 else ''})" if det_p else "—"
+
+                            score_table_rows.append({
+                                "Student ID": sid,
+                                "Total Score": e_sc.get("score_display", "—"),
+                                "Grade": e_sc.get("grade", "—"),
+                                "Verdict / Status": e_sc.get("status", "—"),
+                                "Questions Addressed": e_sc.get("questions_covered", "—"),
+                                "Objective (/2)": e_sc.get("objective", "—"),
+                                "Problem Understanding (/2)": e_sc.get("problem_understanding", "—"),
+                                "Logic / Approach (/2)": e_sc.get("logic_approach", "—"),
+                                "Variables Table (/2)": e_sc.get("variables_table", "—"),
+                                "What I Observed (/2)": e_sc.get("what_i_observed", "—"),
+                                "Detected Programs": det_p_str
+                            })
+                        except Exception:
+                            pass
+
+                if score_table_rows:
+                    # Cohort Metrics Row
+                    c_m1, c_m2, c_m3, c_m4 = st.columns(4)
+                    evaluated_count = len(total_scores_list)
+                    avg_score = sum(total_scores_list) / evaluated_count if evaluated_count > 0 else 0.0
+                    approved_count = sum(1 for r in score_table_rows if "Approved" in r.get("Verdict / Status", ""))
+                    top_score = max(total_scores_list) if total_scores_list else 0.0
+
+                    c_m1.metric("Evaluated Students", f"{evaluated_count} / {len(student_json_files)}")
+                    c_m2.metric("Cohort Average Score", f"{avg_score:.1f} / 10.0" if evaluated_count > 0 else "—")
+                    c_m3.metric("Approved Students", f"{approved_count} / {len(student_json_files)}")
+                    c_m4.metric("Highest Score", f"{top_score:.1f} / 10.0" if evaluated_count > 0 else "—")
+
+                    score_df = pd.DataFrame(score_table_rows)
+                    st.dataframe(score_df, use_container_width=True)
+
+                    csv_data = score_df.to_csv(index=False).encode("utf-8")
+                    st.download_button(
+                        label="📥 Download Cohort Scores Summary (CSV)",
+                        data=csv_data,
+                        file_name=f"{batch_section_id}_{batch_week_id}_scores_summary.csv",
+                        mime="text/csv",
+                        type="primary",
+                        key="dl_cohort_scores_csv"
+                    )
 
 
 # ============================================================

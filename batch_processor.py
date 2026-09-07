@@ -31,6 +31,7 @@ from schemas import (
     BatchManifest,
 )
 from extractor import extract_observation_report, DEFAULT_OLLAMA_URL, DEFAULT_MODEL
+from verifier import verify_observation_report_sync, format_extraction_for_evaluation, parse_evaluation_scores
 
 # Allowed file extensions for student observation reports
 ALLOWED_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
@@ -155,7 +156,10 @@ def discover_student_reports(base_dir: str) -> Dict[str, Dict[str, Any]]:
     subdirs = [e for e in entries if os.path.isdir(os.path.join(base_dir, e))]
     non_dirs = [e for e in entries if not os.path.isdir(os.path.join(base_dir, e))]
     if len(subdirs) == 1 and len(non_dirs) == 0:
-        batch_root = os.path.join(base_dir, subdirs[0])
+        single_subdir = subdirs[0]
+        # Only unwrap if the single subdir is not a student directory (e.g., 22003, N240360)
+        if not re.match(r"^[a-zA-Z]?\d{4,7}$", single_subdir):
+            batch_root = os.path.join(base_dir, single_subdir)
 
     extracted_inner_dir = os.path.join(base_dir, "_extracted_students")
     os.makedirs(extracted_inner_dir, exist_ok=True)
@@ -310,11 +314,13 @@ def run_paddle_worker_sync(
     file_path: str,
     python_exe: Optional[str] = None,
     pages: Optional[str] = None,
-    max_pages: Optional[int] = None
+    max_pages: Optional[int] = None,
+    timeout: Optional[int] = None
 ) -> Dict[str, Any]:
     """
     Runs paddle_worker.py in a dedicated subprocess to ensure CUDA isolation.
     Accepts optional page selection.
+    timeout=None runs until completion without timing out (matching normal extraction).
     """
     if python_exe is None:
         python_exe = get_paddle_python()
@@ -336,18 +342,19 @@ def run_paddle_worker_sync(
 
     start_time = time.perf_counter()
     try:
-        proc = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=300  # 5 minutes max per document
-        )
+        run_kwargs = {
+            "capture_output": True,
+            "text": True,
+            "encoding": "utf-8",
+            "errors": "replace",
+        }
+        if timeout is not None and timeout > 0:
+            run_kwargs["timeout"] = timeout
+        proc = subprocess.run(cmd, **run_kwargs)
     except subprocess.TimeoutExpired:
         return {
             "success": False,
-            "error": "PaddleOCR-VL worker timed out after 300 seconds"
+            "error": f"PaddleOCR-VL worker timed out after {timeout} seconds"
         }
     except Exception as e:
         return {
@@ -406,10 +413,21 @@ class BatchPipeline:
         ollama_url: str = DEFAULT_OLLAMA_URL,
         model: str = DEFAULT_MODEL,
         temperature: float = 0.1,
-        python_exe: Optional[str] = None
+        python_exe: Optional[str] = None,
+        assigned_questions: Optional[str] = None,
+        ocr_timeout: Optional[int] = None,
+        enable_evaluation: bool = True,
+        **kwargs
     ):
         self.week_id = week_id.strip()
         self.section_id = section_id.strip() if section_id else None
+        q_val = assigned_questions or kwargs.get("assigned_questions")
+        if not q_val:
+            from verifier import WEEK1_13_PROGRAMS_PRESET
+            q_val = WEEK1_13_PROGRAMS_PRESET
+        self.assigned_questions = q_val.strip() if (q_val and isinstance(q_val, str)) else None
+        self.ocr_timeout = ocr_timeout if ocr_timeout is not None else kwargs.get("ocr_timeout", None)
+        self.enable_evaluation = enable_evaluation if enable_evaluation is not None else kwargs.get("enable_evaluation", True)
 
         # Sanitize section_id against path traversal
         if self.section_id and (".." in self.section_id or "/" in self.section_id or "\\" in self.section_id):
@@ -467,6 +485,7 @@ class BatchPipeline:
                         if st == "completed":
                             # Validate completed schema
                             StudentObservationReport.model_validate(data)
+                            has_eval = bool(data.get("evaluation"))
                             self.state[student_id] = BatchStudentStatus(
                                 student_id=student_id,
                                 section_id=self.section_id,
@@ -475,7 +494,8 @@ class BatchPipeline:
                                 output=fname,
                                 error=None,
                                 ocr_status="completed",
-                                extraction_status="completed"
+                                extraction_status="completed",
+                                evaluation_status="completed" if has_eval else None
                             )
                         elif st == "failed":
                             err_info = data.get("error", {})
@@ -571,7 +591,7 @@ class BatchPipeline:
     def process_student(
         self,
         student_id: str,
-        file_path: Optional[str],
+        file_path: Optional[str] = None,
         error_precheck: Optional[str] = None,
         progress_cb: Optional[Callable[[BatchStudentStatus], None]] = None
     ) -> BatchStudentStatus:
@@ -598,6 +618,55 @@ class BatchPipeline:
             if progress_cb:
                 progress_cb(status_entry)
 
+        # Resume check: Check if valid completed JSON already exists
+        output_filename = f"{student_id}.json"
+        output_full_path = os.path.join(self.students_dir, output_filename)
+        if os.path.exists(output_full_path):
+            try:
+                with open(output_full_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if data.get("status") == "completed":
+                    StudentObservationReport.model_validate(data)
+
+                    # If evaluation is enabled and missing or incomplete (missing 5 criteria breakdown), run evaluation directly on existing extracted data
+                    cur_eval = data.get("evaluation")
+                    eval_scores = parse_evaluation_scores(cur_eval) if cur_eval else {}
+                    needs_eval = not cur_eval or eval_scores.get("objective") == "—"
+                    if self.enable_evaluation and needs_eval and data.get("extraction"):
+                        update("evaluating", "evaluation")
+                        status_entry.ocr_status = "completed"
+                        status_entry.extraction_status = "completed"
+                        setattr(status_entry, "evaluation_status", "running")
+
+                        ext_dict = data.get("extraction", {})
+                        ocr_txt = data.get("ocr", {}).get("text", "")
+                        eval_text = format_extraction_for_evaluation(ext_dict, fallback_text=ocr_txt)
+                        try:
+                            eval_md = verify_observation_report_sync(
+                                report_text=eval_text,
+                                assigned_questions=self.assigned_questions,
+                                base_url=self.ollama_url,
+                                model=self.model,
+                                temperature=self.temperature
+                            )
+                            setattr(status_entry, "evaluation_status", "completed")
+                            data["evaluation"] = eval_md
+                            with open(output_full_path, "w", encoding="utf-8") as f:
+                                json.dump(data, f, indent=2, ensure_ascii=False)
+                            eval_md_path = os.path.join(self.students_dir, f"{student_id}_evaluation.md")
+                            with open(eval_md_path, "w", encoding="utf-8") as f:
+                                f.write(eval_md)
+                        except Exception:
+                            setattr(status_entry, "evaluation_status", "failed")
+
+                    update("completed", None, None, output_filename)
+                    status_entry.ocr_status = "completed"
+                    status_entry.extraction_status = "completed"
+                    setattr(status_entry, "evaluation_status", "completed" if data.get("evaluation") else None)
+                    return status_entry
+            except Exception:
+                pass
+
         # Handle pre-check errors (ambiguity, duplicates, or missing report file)
         if error_precheck:
             return self.persist_failure(
@@ -617,28 +686,15 @@ class BatchPipeline:
                 progress_cb=progress_cb
             )
 
-        # Resume check: Check if valid completed JSON already exists
-        output_filename = f"{student_id}.json"
-        output_full_path = os.path.join(self.students_dir, output_filename)
-        if os.path.exists(output_full_path):
-            try:
-                with open(output_full_path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                if data.get("status") == "completed":
-                    StudentObservationReport.model_validate(data)
-                    update("completed", None, None, output_filename)
-                    status_entry.ocr_status = "completed"
-                    status_entry.extraction_status = "completed"
-                    return status_entry
-            except Exception:
-                pass
-
         t_start = time.perf_counter()
 
         # Step 1: Run PaddleOCR-VL (sequential concurrency = 1)
         update("processing_ocr", "ocr")
         status_entry.ocr_status = "running"
-        ocr_res = run_paddle_worker_sync(file_path, python_exe=self.python_exe)
+        ocr_kwargs = {"python_exe": self.python_exe}
+        if self.ocr_timeout is not None:
+            ocr_kwargs["timeout"] = self.ocr_timeout
+        ocr_res = run_paddle_worker_sync(file_path, **ocr_kwargs)
 
         if not ocr_res.get("success", False):
             err_text = ocr_res.get("error", "Unknown OCR failure")
@@ -669,13 +725,16 @@ class BatchPipeline:
         update("extracting", "extraction")
         status_entry.extraction_status = "running"
         page_breakdown = ocr_res.get("page_breakdown", [])
-        ext_res = extract_observation_report(
-            report_text=ocr_text,
-            base_url=self.ollama_url,
-            model=self.model,
-            temperature=self.temperature,
-            page_breakdown=page_breakdown
-        )
+        ext_kwargs = {
+            "report_text": ocr_text,
+            "base_url": self.ollama_url,
+            "model": self.model,
+            "temperature": self.temperature,
+            "page_breakdown": page_breakdown,
+        }
+        if self.assigned_questions:
+            ext_kwargs["assigned_questions"] = self.assigned_questions
+        ext_res = extract_observation_report(**ext_kwargs)
 
         if ext_res.status == "failed" and not ext_res.detected_programs:
             err_msg = "; ".join(ext_res.errors) if ext_res.errors else "Extraction failed"
@@ -688,7 +747,28 @@ class BatchPipeline:
                 progress_cb=progress_cb
             )
 
-        # Step 3: Build Canonical Student Report
+        status_entry.extraction_status = "completed"
+
+        # Step 3: Run Qwen Model Evaluation against Lab Manual & Questions (concurrency = 1)
+        eval_md: Optional[str] = None
+        if self.enable_evaluation:
+            update("evaluating", "evaluation")
+            setattr(status_entry, "evaluation_status", "running")
+            eval_text = format_extraction_for_evaluation(ext_res, fallback_text=ocr_text)
+            try:
+                eval_md = verify_observation_report_sync(
+                    report_text=eval_text,
+                    assigned_questions=self.assigned_questions,
+                    base_url=self.ollama_url,
+                    model=self.model,
+                    temperature=self.temperature
+                )
+                setattr(status_entry, "evaluation_status", "completed")
+            except Exception as e:
+                eval_md = f"⚠️ Evaluation error: {str(e)}"
+                setattr(status_entry, "evaluation_status", "failed")
+
+        # Step 4: Build Canonical Student Report
         source_meta = SourceMeta(
             filename=os.path.basename(file_path),
             num_pages=ocr_res.get("num_pages", 1)
@@ -710,11 +790,21 @@ class BatchPipeline:
             status="completed",
             source=source_meta,
             ocr=ocr_obj,
-            extraction=ext_res
+            extraction=ext_res,
+            evaluation=eval_md
         )
 
         # Atomic Save student JSON
         atomic_write_json(output_full_path, student_report)
+
+        # Also save standalone student evaluation markdown file
+        if eval_md:
+            eval_md_path = os.path.join(self.students_dir, f"{student_id}_evaluation.md")
+            try:
+                with open(eval_md_path, "w", encoding="utf-8") as f:
+                    f.write(eval_md)
+            except Exception:
+                pass
 
         status_entry.time_taken = time.perf_counter() - t_start
         status_entry.ocr_status = "completed"
@@ -746,7 +836,8 @@ class BatchPipeline:
             if selected_student_ids is not None and sid not in selected_student_ids:
                 continue
             current_st = self.state[sid].status
-            if current_st != "completed":
+            needs_eval = self.enable_evaluation and (getattr(self.state[sid], "evaluation_status", None) != "completed")
+            if current_st != "completed" or needs_eval:
                 to_process.append((sid, info))
 
         for sid, info in to_process:
@@ -778,7 +869,9 @@ class BatchPipeline:
             if selected_student_ids is not None and sid not in selected_student_ids:
                 continue
             st_entry = self.state.get(sid)
-            if st_entry and st_entry.status == "failed":
+            is_failed = st_entry and st_entry.status == "failed"
+            eval_failed = self.enable_evaluation and st_entry and getattr(st_entry, "evaluation_status", None) == "failed"
+            if is_failed or eval_failed:
                 to_retry.append((sid, info))
 
         for sid, info in to_retry:
@@ -937,15 +1030,18 @@ class BatchPipeline:
             if os.path.exists(self.complete_json_path):
                 zf.write(self.complete_json_path, arcname=os.path.basename(self.complete_json_path))
 
-            # Include individual student JSON files
+            # Include individual student JSON and evaluation MD files
             if os.path.exists(self.students_dir):
                 for fname in sorted(os.listdir(self.students_dir)):
                     if (
-                        fname.endswith(".json")
-                        and not fname.endswith("_manifest.json")
-                        and not fname.endswith("_summary.json")
-                        and not fname.endswith("_reports.json")
-                        and fname != "batch_manifest.json"
+                        (
+                            fname.endswith(".json")
+                            and not fname.endswith("_manifest.json")
+                            and not fname.endswith("_summary.json")
+                            and not fname.endswith("_reports.json")
+                            and fname != "batch_manifest.json"
+                        )
+                        or fname.endswith("_evaluation.md")
                     ):
                         full_path = os.path.join(self.students_dir, fname)
                         arc_name = fname if self.students_dir == self.batch_output_dir else os.path.join("students", fname)

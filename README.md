@@ -219,9 +219,31 @@ streamlit run app.py
 
 ---
 
+## 📋 Observation Report Verification Engine (Instruction Manual & Assigned Questions)
+
+The platform includes an advanced verification engine that evaluates extracted observation reports against the official **"Instruction Manual for Writing the Observation Report"** submission guide and instructor-assigned lab questions:
+
+1. **Instructor Assigned Questions Input**:
+   - Instructors can input the specific problems/questions assigned for the lab session before evaluation.
+   - Includes a 1-click **Manual Preset** (`Program 1: Factors of a Number`, `Program 2: Factorial of a Number`, `Program 3: Palindrome Number`, `Program 4: Prime Number`, `Program 5: Fibonacci Series`).
+2. **Submission Guide Comparison**:
+   - Evaluates against the 5 core sections (each scored out of 2.0, total 10.0 points):
+     - `Objective of the Lab` (2.0 pts): Session-wide purpose, concepts, problem types, skills.
+     - `Problem Understanding` (2.0 pts): Student's own words (input, calculation, output); no C code.
+     - `Logic / Approach Used` (2.0 pts): Conceptual step-by-step reasoning (loops, conditions, value changes); no syntax copying.
+     - `Important Variables Table` (2.0 pts): Markdown table (`| Variable | Purpose |`).
+     - `What I Observed` (2.0 pts): Genuine observations on execution behavior; penalizes generic statements.
+3. **Question Coverage & Integrity Checks**:
+   - Cross-references the report against the assigned questions to generate a **Coverage Analysis Table**.
+   - Checks answers to the **5 Core Questions** and flags academic integrity violations (full C code dumping).
+4. **Exportable Deliverables**:
+   - Token-streamed live evaluation report with 1-click markdown download (`<student_id>_evaluation.md`).
+
+---
+
 ## 🧪 Testing & Verification
 
-The test suite includes 29 comprehensive automated tests:
+The test suite includes 37 comprehensive automated tests:
 
 ```powershell
 conda activate paddle_vl
@@ -231,4 +253,5 @@ python -m pytest tests/ -v
 ### Test Coverage Summary:
 - **Security & Extraction**: Zip Slip defense, path traversal prevention, bomb limits, markdown fence stripping, 1-shot self-healing, ground-truth source page assignment.
 - **Section Workflow**: Explicit `section_id`, complete section aggregation, failure persistence, section isolation, week isolation, resume skipping completed, retry targeting only failed, duplicate ID rejection, section summary calculations.
+- **Verification Engine**: Official Instruction Manual prompt formatting, assigned questions message construction, token streaming, synchronous evaluation, and Ollama connection health checks.
 - **End-to-End Integration**: 3-student cohort integration run and 60-student full cohort benchmark via `python run_section_integration_test.py`.

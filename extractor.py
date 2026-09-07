@@ -177,7 +177,8 @@ def extract_observation_report(
     base_url: str = DEFAULT_OLLAMA_URL,
     model: str = DEFAULT_MODEL,
     temperature: float = 0.1,
-    page_breakdown: Optional[List[Dict[str, Any]]] = None
+    page_breakdown: Optional[List[Dict[str, Any]]] = None,
+    assigned_questions: Optional[str] = None
 ) -> ExtractionResult:
     """
     Sends OCR text to Ollama/Qwen, requests strict structured JSON,
@@ -191,11 +192,21 @@ def extract_observation_report(
             errors=["Empty report text provided for extraction"]
         )
 
-    user_prompt = (
-        "Extract the structured observation report from the following OCR text:\n\n"
-        f"```markdown\n{text_clean}\n```\n\n"
-        "Remember: output strictly valid JSON matching the schema. Do not invent missing sections."
-    )
+    if assigned_questions and assigned_questions.strip():
+        user_prompt = (
+            "The student was assigned the following lab programs/questions:\n"
+            f"```text\n{assigned_questions.strip()}\n```\n\n"
+            "Extract the structured observation report from the following OCR text:\n\n"
+            f"```markdown\n{text_clean}\n```\n\n"
+            "Identify the programs (P1, P2, etc.) matching the student's report. "
+            "Remember: output strictly valid JSON matching the schema. Do not invent missing sections or programs."
+        )
+    else:
+        user_prompt = (
+            "Extract the structured observation report from the following OCR text:\n\n"
+            f"```markdown\n{text_clean}\n```\n\n"
+            "Remember: output strictly valid JSON matching the schema. Do not invent missing sections."
+        )
 
     success, raw_content, error = _call_ollama(
         prompt=user_prompt,
@@ -284,18 +295,21 @@ def _build_extraction_result(data: Dict[str, Any]) -> ExtractionResult:
     detected: List[str] = []
     missing: List[str] = []
 
-    # Ensure canonical P1 through P10 keys exist
-    canonical_keys = [f"P{i}" for i in range(1, 11)]
-
     # Collect any programs under aliases (e.g. "Program 1" -> "P1")
     normalized_incoming: Dict[str, Dict[str, Any]] = {}
+    max_prog_num = 10
     for k, v in raw_programs.items():
         if not isinstance(v, dict):
             continue
         m = re.search(r"\d+", str(k))
         if m:
-            std_key = f"P{int(m.group(0))}"
+            p_num = int(m.group(0))
+            max_prog_num = max(max_prog_num, p_num)
+            std_key = f"P{p_num}"
             normalized_incoming[std_key] = v
+
+    # Ensure canonical keys cover at least P1..P10, or up to the highest program number found (e.g. P1..P13)
+    canonical_keys = [f"P{i}" for i in range(1, max_prog_num + 1)]
 
     for key in canonical_keys:
         item = normalized_incoming.get(key)

@@ -106,6 +106,7 @@ class StudentObservationReport(BaseModel):
     source: SourceMeta
     ocr: OcrResult
     extraction: ExtractionResult
+    evaluation: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
 
 
@@ -164,7 +165,7 @@ class SectionSummary(BaseModel):
 
 class BatchStudentStatus(BaseModel):
     """Tracking entry for a student within a batch run."""
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="allow")
     student_id: str
     section_id: Optional[str] = None
     status: Literal[
@@ -172,6 +173,7 @@ class BatchStudentStatus(BaseModel):
         "processing_ocr",
         "ocr_complete",
         "extracting",
+        "evaluating",
         "completed",
         "failed"
     ] = "pending"
@@ -181,6 +183,7 @@ class BatchStudentStatus(BaseModel):
     time_taken: float = 0.0
     ocr_status: Optional[str] = None
     extraction_status: Optional[str] = None
+    evaluation_status: Optional[str] = None
 
 
 class BatchManifest(BaseModel):

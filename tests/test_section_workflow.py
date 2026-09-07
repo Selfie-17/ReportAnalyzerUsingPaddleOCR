@@ -30,7 +30,7 @@ from schemas import (
 )
 
 
-def mock_fast_ocr(file_path, python_exe=None):
+def mock_fast_ocr(file_path, python_exe=None, **kwargs):
     return {
         "success": True,
         "text": "1. Check whether a number is even or odd\nExplanation: Uses mod 2.\n✓ Executed.",
@@ -42,7 +42,7 @@ def mock_fast_ocr(file_path, python_exe=None):
     }
 
 
-def mock_fast_extraction(report_text, base_url=None, model=None, temperature=0.1, page_breakdown=None):
+def mock_fast_extraction(report_text, base_url=None, model=None, temperature=0.1, page_breakdown=None, **kwargs):
     return ExtractionResult(
         status="success",
         objective_of_lab="Lab Objective text",
@@ -68,6 +68,16 @@ def mock_fast_extraction(report_text, base_url=None, model=None, temperature=0.1
         missing_programs=[f"P{i}" for i in range(3, 11)],
         errors=[]
     )
+
+
+def mock_fast_verification(report_text, assigned_questions=None, **kwargs):
+    return "# 📊 Observation Report Verification Report\n\n## Overall Evaluation\n- **Total Score:** 9.5 / 10.0\n- **Grade:** A\n- **Status:** Approved\n"
+
+
+@pytest.fixture(autouse=True)
+def mock_verify_for_section_tests():
+    with patch("batch_processor.verify_observation_report_sync", side_effect=mock_fast_verification):
+        yield
 
 
 def test_section_id():

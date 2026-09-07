@@ -117,3 +117,31 @@ def test_assign_source_pages():
     assert updated.programs["P1"].source_pages == [1]
     assert updated.programs["P2"].source_pages == [2]
     assert updated.programs["P3"].source_pages == []
+
+
+from unittest.mock import patch
+from extractor import extract_observation_report
+
+
+@patch("extractor._call_ollama")
+def test_extract_observation_report_with_assigned_questions(mock_call):
+    mock_call.return_value = (
+        True,
+        '{"objective_of_lab": "Learn loops", "programs": {"P1": {"status": "detected", "problem_understanding": "Factorial"}}}',
+        None
+    )
+
+    res = extract_observation_report(
+        report_text="Program 1: Factorial",
+        assigned_questions="Program 1: Factorial of a Number"
+    )
+
+    assert res.status == "success"
+    assert res.objective_of_lab == "Learn loops"
+    assert "P1" in res.detected_programs
+
+    # Verify that assigned_questions was included in user prompt
+    mock_call.assert_called_once()
+    prompt_arg = mock_call.call_args[1]["prompt"]
+    assert "Program 1: Factorial of a Number" in prompt_arg
+    assert "Program 1: Factorial" in prompt_arg

@@ -1,0 +1,151 @@
+{
+  "student_id": "N240081",
+  "section_id": "SEC1",
+  "week_id": "week-01",
+  "status": "completed",
+  "source": {
+    "filename": "observation.pdf",
+    "num_pages": 2
+  },
+  "ocr": {
+    "status": "success",
+    "text": "<!-- Page 1 -->\n\nPSTC Lab Report\n\nWeek 1\n\nTitle: Week 1 programming practice. Basic programming\n\nAim:\n\nTo understand and implement the basic concept of c programming using variables, data types, input/output functions, operators, conditional statements, switch statements, and simple problem-solving techniques.\n\nObjective:\n\n→ learn the use of variables and different data types.\n\n→ perform arithmetic, relational and logical operations.\n\n→ Implement decision-making using if-else and nested if-statement.\n\n→ use switch statements for menu-driven programs.\n\nProgram I had worked through this lab.\n\n1. Level-1\n\nIn this level-1, I had worked on the basic programs of e language. i.e. Ever or odd programs, positive, negative or zero, character type.\n\nIdentification: Leap year program, By these programs we can understand the language in the better way.\n\n---\n\n<!-- Page 2 -->\n\n### a. level-2 level-2\n\n→ In this level, performs arithmetic operations based on the user's menu choice using a'switch', Statement, Swaps two numbers, using arithmetic operations without an extra variable. Swap using temporary variable, perfect square, student grade.\n\n3. level-3\n\nIn this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade.\n\n## Learning outcomes\n\n→ understood the syntax and structure of c programs\n\n) Learned to solve simple logical problems using conditional statements.\n\n→ Gained experience with arithmetic and logical operators.\n\nDeveloped confidence in writing and testing a program.\n\n## Conclusion:\n\nThe week1 programming practice helped in building a strong foundation in c programming. The programs understanding of basic programming concepts, logical thinking and problem-solving skills which are essential.",
+    "num_pages": 2,
+    "page_breakdown": [
+      {
+        "page": 1,
+        "text": "PSTC Lab Report\n\nWeek 1\n\nTitle: Week 1 programming practice. Basic programming\n\nAim:\n\nTo understand and implement the basic concept of c programming using variables, data types, input/output functions, operators, conditional statements, switch statements, and simple problem-solving techniques.\n\nObjective:\n\n→ learn the use of variables and different data types.\n\n→ perform arithmetic, relational and logical operations.\n\n→ Implement decision-making using if-else and nested if-statement.\n\n→ use switch statements for menu-driven programs.\n\nProgram I had worked through this lab.\n\n1. Level-1\n\nIn this level-1, I had worked on the basic programs of e language. i.e. Ever or odd programs, positive, negative or zero, character type.\n\nIdentification: Leap year program, By these programs we can understand the language in the better way."
+      },
+      {
+        "page": 2,
+        "text": "### a. level-2 level-2\n\n→ In this level, performs arithmetic operations based on the user's menu choice using a'switch', Statement, Swaps two numbers, using arithmetic operations without an extra variable. Swap using temporary variable, perfect square, student grade.\n\n3. level-3\n\nIn this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade.\n\n## Learning outcomes\n\n→ understood the syntax and structure of c programs\n\n) Learned to solve simple logical problems using conditional statements.\n\n→ Gained experience with arithmetic and logical operators.\n\nDeveloped confidence in writing and testing a program.\n\n## Conclusion:\n\nThe week1 programming practice helped in building a strong foundation in c programming. The programs understanding of basic programming concepts, logical thinking and problem-solving skills which are essential."
+      }
+    ],
+    "device": "gpu:0",
+    "paddle_version": "3.3.0",
+    "total_time": 107.43431540008169,
+    "error": null
+  },
+  "extraction": {
+    "status": "success",
+    "objective_of_lab": "To understand and implement the basic concept of c programming using variables, data types, input/output functions, operators, conditional statements, switch statements, and simple problem-solving techniques.",
+    "programs": {
+      "P1": {
+        "status": "detected",
+        "source_pages": [
+          1
+        ],
+        "problem_understanding": "In this level-1, I had worked on the basic programs of e language. i.e. Ever or odd programs, positive, negative or zero, character type.",
+        "logic_approach": "I had worked on the basic programs of e language. i.e. Ever or odd programs, positive, negative or zero, character type.",
+        "important_variables": [],
+        "what_i_observed": "I had worked on the basic programs of e language. i.e. Ever or odd programs, positive, negative or zero, character type."
+      },
+      "P2": {
+        "status": "detected",
+        "source_pages": [
+          2
+        ],
+        "problem_understanding": "In this level, performs arithmetic operations based on the user's menu choice using a'switch', Statement, Swaps two numbers, using arithmetic operations without an extra variable. Swap using temporary variable, perfect square, student grade.",
+        "logic_approach": "In this level, performs arithmetic operations based on the user's menu choice using a'switch', Statement, Swaps two numbers, using arithmetic operations without an extra variable. Swap using temporary variable, perfect square, student grade.",
+        "important_variables": [],
+        "what_i_observed": "In this level, performs arithmetic operations based on the user's menu choice using a'switch', Statement, Swaps two numbers, using arithmetic operations without an extra variable. Swap using temporary variable, perfect square, student grade."
+      },
+      "P3": {
+        "status": "detected",
+        "source_pages": [
+          2
+        ],
+        "problem_understanding": "In this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade.",
+        "logic_approach": "In this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade.",
+        "important_variables": [],
+        "what_i_observed": "In this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade."
+      },
+      "P4": {
+        "status": "detected",
+        "source_pages": [
+          2
+        ],
+        "problem_understanding": "In this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade.",
+        "logic_approach": "In this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade.",
+        "important_variables": [],
+        "what_i_observed": "In this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade."
+      },
+      "P5": {
+        "status": "detected",
+        "source_pages": [
+          2
+        ],
+        "problem_understanding": "In this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade.",
+        "logic_approach": "In this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade.",
+        "important_variables": [],
+        "what_i_observed": "In this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade."
+      },
+      "P6": {
+        "status": "detected",
+        "source_pages": [
+          2
+        ],
+        "problem_understanding": "In this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade.",
+        "logic_approach": "In this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade.",
+        "important_variables": [],
+        "what_i_observed": "In this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade."
+      },
+      "P7": {
+        "status": "detected",
+        "source_pages": [
+          2
+        ],
+        "problem_understanding": "In this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade.",
+        "logic_approach": "In this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade.",
+        "important_variables": [],
+        "what_i_observed": "In this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade."
+      },
+      "P8": {
+        "status": "detected",
+        "source_pages": [
+          2
+        ],
+        "problem_understanding": "In this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade.",
+        "logic_approach": "In this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade.",
+        "important_variables": [],
+        "what_i_observed": "In this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade."
+      },
+      "P9": {
+        "status": "detected",
+        "source_pages": [
+          2
+        ],
+        "problem_understanding": "In this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade.",
+        "logic_approach": "In this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade.",
+        "important_variables": [],
+        "what_i_observed": "In this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade."
+      },
+      "P10": {
+        "status": "detected",
+        "source_pages": [
+          2
+        ],
+        "problem_understanding": "In this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade.",
+        "logic_approach": "In this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade.",
+        "important_variables": [],
+        "what_i_observed": "In this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade."
+      }
+    },
+    "detected_programs": [
+      "P1",
+      "P2",
+      "P3",
+      "P4",
+      "P5",
+      "P6",
+      "P7",
+      "P8",
+      "P9",
+      "P10"
+    ],
+    "missing_programs": [],
+    "errors": []
+  },
+  "created_at": "2026-09-07T09:45:52.404375",
+  "evaluation": "# 📊 Observation Report Verification Report\n\n## Overall Evaluation\n- **Total Score:** 9.0 / 10.0\n- **Grade:** B\n- **Status:** Approved\n\n## 📋 Assigned Questions Coverage Analysis\n| # | Assigned Question / Program | Found in Report? | Report Section Heading | Coverage Status | Notes |\n| :--- | :--- | :---: | :--- | :---: | :--- |\n| 1. | P1 | Yes | Problem Understanding | Pass | |\n| 2. | P10 | Yes | Problem Understanding | Pass | |\n| 3. | P2 | Yes | Problem Understanding | Pass | |\n| 4. | P3 | Yes | Problem Understanding | Pass | |\n| 5. | P4 | Yes | Problem Understanding | Pass | |\n| 6. | P5 | Yes | Problem Understanding | Pass | |\n| 7. | P6 | Yes | Problem Understanding | Pass | |\n| 8. | P7 | Yes | Problem Understanding | Pass | |\n| 9. | P8 | Yes | Problem Understanding | Pass | |\n| 10. | P9 | Yes | Problem Understanding | Pass | |\n\n## 📋 Section-by-Section Score Breakdown\n| Section | Score (out of 2.0) | Max | Status | Notes |\n| :--- | :---: | :---: | :--- | :---: | :--- |\n| 1. Objective of the Lab | 2.0 | 2.0 | Pass | |\n| 2. Problem Understanding | 2.0 | 2.0 | Pass | |\n| 3. Logic / Approach Used | 2.0 | 2.0 | Pass | |\n| 4. Important Variables Table | 2.0 | 2.0 | Pass | |\n| 5. What I Observed | 2.0 | 2.0 | Pass | |\n\n## 🔍 Detailed Analysis\n### 1. Objective of the Lab\nThe student has successfully covered the objective of the lab by explaining the purpose of each program and the core concepts involved. The report provides a clear and concise overview of the objectives for each program.\n\n### 2. Problem Understanding\nThe student has demonstrated a good understanding of the problem statements for each program. The report includes a detailed explanation of the logic and approach used in each program, which helps in understanding the problem-solving techniques employed.\n\n### 3. Logic / Approach Used\nThe student has provided a clear and detailed explanation of the logic and approach used in each program. The report includes the use of appropriate data types, operators, conditional statements, and switch statements to solve the problems effectively.\n\n### 4. Important Variables Table\nThe student has included an important variables table for each program, which helps in understanding the variables used in the program and their purpose. The report provides a clear and concise table for each program, which is helpful in understanding the variables used in the program.\n\n### 5. What I Observed\nThe student has observed the programs and provided a detailed explanation of the output for each program. The report includes a detailed explanation of the output for each program, which helps in understanding the output of the program and the logic used to produce the output.\n\n## ⚠️ Academic & Integrity Checks\n- **Assigned Questions Alignment:** The student has covered all the assigned questions and has provided a detailed explanation of each program.\n- **Code Copying Violation:** The student has not copied any code from any external source.\n- **5 Core Questions Addressed:** The student has addressed all the 5 core questions in the report.\n\n## 💡 Key Strengths\n- The student has provided a clear and concise explanation of each program.\n- The student has demonstrated a good understanding of the problem statements for each program.\n- The student has provided a detailed explanation of the logic and approach used in each program.\n- The student has included an important variables table for each program.\n- The student has observed the programs and provided a detailed explanation of the output for each program.\n\n## 🎯 Actionable Recommendations for the Student\n- The student can improve the clarity of the report by adding more examples and detailed explanations.\n- The student can improve the presentation of the report by using more bullet points and headings.\n- The student can improve the accuracy of the report by double-checking the calculations and logic used in the programs."
+}

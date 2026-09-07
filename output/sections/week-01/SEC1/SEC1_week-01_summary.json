@@ -1,21 +1,21 @@
 {
   "section_id": "SEC1",
   "week_id": "week-01",
-  "total_students": 1,
-  "successful": 0,
-  "failed": 1,
+  "total_students": 5,
+  "successful": 5,
+  "failed": 0,
   "pending": 0,
   "program_detection": {
-    "P1": 0,
-    "P2": 0,
-    "P3": 0,
-    "P4": 0,
-    "P5": 0,
-    "P6": 0,
-    "P7": 0,
-    "P8": 0,
-    "P9": 0,
-    "P10": 0
+    "P1": 5,
+    "P2": 5,
+    "P3": 5,
+    "P4": 5,
+    "P5": 5,
+    "P6": 5,
+    "P7": 5,
+    "P8": 5,
+    "P9": 5,
+    "P10": 5
   },
-  "generated_at": "2026-09-05T00:28:20.721443"
+  "generated_at": "2026-09-07T11:46:33.686009"
 }

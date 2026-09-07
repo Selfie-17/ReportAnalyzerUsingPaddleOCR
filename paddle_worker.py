@@ -4,6 +4,9 @@ import json
 import tempfile
 import argparse
 
+# Default to 1.0x native PDF render scale to avoid artificial 2x oversampling on high-res camera scans
+os.environ.setdefault("PADDLE_PDX_PDF_RENDER_SCALE", "1.0")
+
 if sys.platform == "win32":
     try:
         sys.stdout.reconfigure(encoding="utf-8")
@@ -197,7 +200,13 @@ if file_ext == ".pdf":
     sys.stderr.write(f"[PaddleOCR-VL] Running native OCR on {len(pages_to_process)}/{total_doc_pages} pages from PDF...\n")
 
     try:
-        results = pipeline.predict(pdf_target)
+        results = pipeline.predict(
+            pdf_target,
+            use_doc_orientation_classify=False,
+            use_doc_unwarping=False,
+            use_chart_recognition=False,
+            use_seal_recognition=False,
+        )
         for idx, res in enumerate(results):
             p_num = pages_to_process[idx] if idx < len(pages_to_process) else (idx + 1)
             p_text = extract_text_from_result(res)
@@ -217,7 +226,13 @@ if file_ext == ".pdf":
 else:
     # Single image file
     sys.stderr.write(f"[PaddleOCR-VL] Running OCR on single image: {os.path.basename(input_path)}...\n")
-    results = pipeline.predict(input_path)
+    results = pipeline.predict(
+        input_path,
+        use_doc_orientation_classify=False,
+        use_doc_unwarping=False,
+        use_chart_recognition=False,
+        use_seal_recognition=False,
+    )
     img_text = ""
     for res in results:
         t = extract_text_from_result(res)

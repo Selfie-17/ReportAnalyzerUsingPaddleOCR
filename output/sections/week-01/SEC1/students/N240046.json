@@ -1,0 +1,186 @@
+{
+  "student_id": "N240046",
+  "section_id": "SEC1",
+  "week_id": "week-01",
+  "status": "completed",
+  "source": {
+    "filename": "observation.pdf",
+    "num_pages": 2
+  },
+  "ocr": {
+    "status": "success",
+    "text": "<!-- Page 1 -->\n\nNAME: PYAMINI\n\nCLASS: CSE-01 [F_{2}]\n\nIDNO: N240046\n\nBRANCH: CSE\n\nTo learn the fundamental C programming by implementing programs using variables, operators, conditional statements, loops, and switch statement\n\nPrograms performed:\n\n1) Even or odd This program checks whether a given number is even or odd using the modulus ( $ \\% $) operator and an if-else statement\n\n2) Positive, Negative, or zero This program determines whether a number is +ve, -ve, or zero using relative or real operators and an if-else-if ladder.\n\n3) Character type check This program identifies whether the entered character is an uppercase letter, lowercase letter, digit, or special character.\n\n4) Leap year check This program checks if a given year is a Leap year by applying the standard leap year conditions with the nested if statements.\n\n5) memory allocation. Data types: This program displays the memory site of different data types using site of operator.\n\n6) Menu-Based Arithmetic operational This program performs arithmetic operations, such as addition, subtraction, multiplication, division, modulus, &\n\nPower using switch statement\n\n7) Swap without temporary variable This program\n\n---\n\n<!-- Page 2 -->\n\nSwaps two members using by storing one value using arithmetic operations without using an extra variable\n\nSwaps two numbers\n\nusing arithmetic operations without using an extra variable.\n\n8. Swap using temporary variable: This swaps two numbers by string one value in temporary variable.\n\n9) Perfect square check: This program checks whether a number is a perfect square without using square function.\n\n10) Student Grade calculation. This program leads a Student's marks and displays, the corresponding grade using nested if-else statement or if checkholder.\n\n11) Extended menu: Based calculator This program improves the calculator by handling invalid menu choices and division by zero.\n\n12) Largest of three numbers: This program finds the largest among three numbers using only the conditional (ternary) operator without using if-else statement.\n\n13) Grade point to letter grade: This program is done by using switch statement and some relational checks.\n\nConcepts Used:\n\nOperators Used: 1) Arithmetic operators 2) Logical operators\n\n3) Ternary operators\n\nControl statements: 1) If 2) nested if 3) switch case\n\nLooping statements: 7) For loop 2) while loop\n\nConclusion:\n\nAll the programs were implemented, compiled, executed successfully, and the expected outputs were obtained.",
+    "num_pages": 2,
+    "page_breakdown": [
+      {
+        "page": 1,
+        "text": "NAME: PYAMINI\n\nCLASS: CSE-01 [F_{2}]\n\nIDNO: N240046\n\nBRANCH: CSE\n\nTo learn the fundamental C programming by implementing programs using variables, operators, conditional statements, loops, and switch statement\n\nPrograms performed:\n\n1) Even or odd This program checks whether a given number is even or odd using the modulus ( $ \\% $) operator and an if-else statement\n\n2) Positive, Negative, or zero This program determines whether a number is +ve, -ve, or zero using relative or real operators and an if-else-if ladder.\n\n3) Character type check This program identifies whether the entered character is an uppercase letter, lowercase letter, digit, or special character.\n\n4) Leap year check This program checks if a given year is a Leap year by applying the standard leap year conditions with the nested if statements.\n\n5) memory allocation. Data types: This program displays the memory site of different data types using site of operator.\n\n6) Menu-Based Arithmetic operational This program performs arithmetic operations, such as addition, subtraction, multiplication, division, modulus, &\n\nPower using switch statement\n\n7) Swap without temporary variable This program"
+      },
+      {
+        "page": 2,
+        "text": "Swaps two members using by storing one value using arithmetic operations without using an extra variable\n\nSwaps two numbers\n\nusing arithmetic operations without using an extra variable.\n\n8. Swap using temporary variable: This swaps two numbers by string one value in temporary variable.\n\n9) Perfect square check: This program checks whether a number is a perfect square without using square function.\n\n10) Student Grade calculation. This program leads a Student's marks and displays, the corresponding grade using nested if-else statement or if checkholder.\n\n11) Extended menu: Based calculator This program improves the calculator by handling invalid menu choices and division by zero.\n\n12) Largest of three numbers: This program finds the largest among three numbers using only the conditional (ternary) operator without using if-else statement.\n\n13) Grade point to letter grade: This program is done by using switch statement and some relational checks.\n\nConcepts Used:\n\nOperators Used: 1) Arithmetic operators 2) Logical operators\n\n3) Ternary operators\n\nControl statements: 1) If 2) nested if 3) switch case\n\nLooping statements: 7) For loop 2) while loop\n\nConclusion:\n\nAll the programs were implemented, compiled, executed successfully, and the expected outputs were obtained."
+      }
+    ],
+    "device": "gpu:0",
+    "paddle_version": "3.3.0",
+    "total_time": 102.5891593999695,
+    "error": null
+  },
+  "extraction": {
+    "status": "success",
+    "objective_of_lab": "To learn the fundamental C programming by implementing programs using variables, operators, conditional statements, loops, and switch statement",
+    "programs": {
+      "P1": {
+        "status": "detected",
+        "source_pages": [
+          1
+        ],
+        "problem_understanding": "This program checks whether a given number is even or odd using the modulus ( %) operator and an if-else statement",
+        "logic_approach": "The program uses the modulus operator to determine if the remainder of the number divided by 2 is 0 or not. If it is 0, the number is even; otherwise, it is odd.",
+        "important_variables": [],
+        "what_i_observed": "The program correctly identified whether the given number is even or odd."
+      },
+      "P2": {
+        "status": "detected",
+        "source_pages": [
+          1
+        ],
+        "problem_understanding": "This program determines whether a number is positive, negative, or zero using relative or real operators and an if-else-if ladder.",
+        "logic_approach": "The program uses the comparison operators to check if the number is greater than, less than, or equal to zero.",
+        "important_variables": [],
+        "what_i_observed": "The program correctly identified whether the given number is positive, negative, or zero."
+      },
+      "P3": {
+        "status": "detected",
+        "source_pages": [
+          1,
+          2
+        ],
+        "problem_understanding": "This program identifies whether the entered character is an uppercase letter, lowercase letter, digit, or special character.",
+        "logic_approach": "The program uses the character comparison operators to check if the character is an uppercase letter, lowercase letter, digit, or special character.",
+        "important_variables": [],
+        "what_i_observed": "The program correctly identified whether the entered character is an uppercase letter, lowercase letter, digit, or special character."
+      },
+      "P4": {
+        "status": "detected",
+        "source_pages": [
+          1
+        ],
+        "problem_understanding": "This program checks if a given year is a Leap year by applying the standard leap year conditions with the nested if statements.",
+        "logic_approach": "The program uses the leap year conditions to check if the year is divisible by 4, but not divisible by 100 unless it is also divisible by 400.",
+        "important_variables": [],
+        "what_i_observed": "The program correctly identified whether the given year is a Leap year."
+      },
+      "P5": {
+        "status": "detected",
+        "source_pages": [
+          1
+        ],
+        "problem_understanding": "This program displays the memory site of different data types using site of operator.",
+        "logic_approach": "The program uses the sizeof() operator to determine the memory size of different data types.",
+        "important_variables": [],
+        "what_i_observed": "The program correctly displayed the memory site of different data types."
+      },
+      "P6": {
+        "status": "detected",
+        "source_pages": [
+          1
+        ],
+        "problem_understanding": "This program performs arithmetic operations, such as addition, subtraction, multiplication, division, modulus, & Power using switch statement",
+        "logic_approach": "The program uses a switch statement to perform different arithmetic operations based on the user's choice.",
+        "important_variables": [],
+        "what_i_observed": "The program correctly performed arithmetic operations."
+      },
+      "P7": {
+        "status": "detected",
+        "source_pages": [
+          1
+        ],
+        "problem_understanding": "This program swaps two numbers without using a third/temporary variable.",
+        "logic_approach": "The program uses arithmetic operations to swap two numbers without using a third variable.",
+        "important_variables": [],
+        "what_i_observed": "The program correctly swapped two numbers without using a third variable."
+      },
+      "P8": {
+        "status": "detected",
+        "source_pages": [
+          2
+        ],
+        "problem_understanding": "This swaps two numbers using a temporary variable.",
+        "logic_approach": "The program uses a temporary variable to swap two numbers.",
+        "important_variables": [],
+        "what_i_observed": "The program correctly swapped two numbers using a temporary variable."
+      },
+      "P9": {
+        "status": "detected",
+        "source_pages": [
+          1,
+          2
+        ],
+        "problem_understanding": "This program checks whether a given number is a perfect square without using the sqrt() library function.",
+        "logic_approach": "The program uses a loop to check if the square of the integer part of the square root of the number is equal to the number.",
+        "important_variables": [],
+        "what_i_observed": "The program correctly checked whether a given number is a perfect square."
+      },
+      "P10": {
+        "status": "detected",
+        "source_pages": [
+          2
+        ],
+        "problem_understanding": "This program leads a Student's marks and displays, the corresponding grade using nested if-else statement or if checkholder.",
+        "logic_approach": "The program uses nested if-else statements to determine the grade based on the student's marks.",
+        "important_variables": [],
+        "what_i_observed": "The program correctly calculated and displayed the student's grade."
+      },
+      "P11": {
+        "status": "detected",
+        "source_pages": [
+          2
+        ],
+        "problem_understanding": "Extended menu: Based calculator This program improves the calculator by handling invalid menu choices and division by zero.",
+        "logic_approach": "The program uses a switch statement to handle different menu choices and checks for division by zero.",
+        "important_variables": [],
+        "what_i_observed": "The program correctly handled invalid menu choices and division by zero."
+      },
+      "P12": {
+        "status": "detected",
+        "source_pages": [
+          2
+        ],
+        "problem_understanding": "Largest of three numbers: This program finds the largest among three numbers using only the conditional (ternary) operator without using if-else statement.",
+        "logic_approach": "The program uses the ternary operator to find the largest among three numbers.",
+        "important_variables": [],
+        "what_i_observed": "The program correctly found the largest among three numbers."
+      },
+      "P13": {
+        "status": "detected",
+        "source_pages": [
+          2
+        ],
+        "problem_understanding": "Grade point to letter grade: This program is done by using switch statement and some relational checks.",
+        "logic_approach": "The program uses a switch statement to convert a grade point to a letter grade based on the grade point.",
+        "important_variables": [],
+        "what_i_observed": "The program correctly converted a grade point to a letter grade."
+      }
+    },
+    "detected_programs": [
+      "P1",
+      "P2",
+      "P3",
+      "P4",
+      "P5",
+      "P6",
+      "P7",
+      "P8",
+      "P9",
+      "P10",
+      "P11",
+      "P12",
+      "P13"
+    ],
+    "missing_programs": [],
+    "errors": []
+  },
+  "created_at": "2026-09-07T09:43:44.984438",
+  "evaluation": "# 📊 Observation Report Verification Report\n\n## Overall Evaluation\n- **Total Score:** 8.0 / 10.0\n- **Grade:** B\n- **Status:** Approved\n\n## 📋 Assigned Questions Coverage Analysis\n| # | Assigned Question / Program | Found in Report? | Report Section Heading | Coverage Status | Notes |\n| :--- | :--- | :---: | :--- | :---: | :--- |\n| 1 | Even or odd | Yes | Program 1: Even or odd This program checks whether a given number is even or odd using the modulus ( \\% ) operator and an if-else statement | Fully Addressed | |\n| 2 | Positive, Negative, or zero | Yes | Program 2: Positive, Negative, or zero This program determines whether a number is +ve, -ve, or zero using relative or real operators and an if-else-if ladder. | Fully Addressed | |\n| 3 | Character type check | Yes | Program 3: Character type check This program identifies whether the entered character is an uppercase letter, lowercase letter, digit, or special character. | Fully Addressed | |\n| 4 | Leap year check | Yes | Program 4: Leap year check This program checks if a given year is a Leap year by applying the standard leap year conditions with the nested if statements. | Fully Addressed | |\n| 5 | memory allocation. Data types: | Yes | Program 5: memory allocation. Data types: This program displays the memory site of different data types using site of operator. | Fully Addressed | |\n| 6 | Menu-Based Arithmetic operational | Yes | Program 6: Menu-Based Arithmetic operational This program performs arithmetic operations, such as addition, subtraction, multiplication, division, modulus, & Power using switch statement | Fully Addressed | |\n| 7 | Swap without temporary variable | Yes | Program 7: Swap without temporary variable This program swaps two members using by storing one value using arithmetic operations without using an extra variable | Fully Addressed | |\n| 8 | Swap using temporary variable | Yes | Program 8: Swap using temporary variable This swaps two numbers by string one value in temporary variable. | Fully Addressed | |\n| 9 | Perfect square check | Yes | Program 9: Perfect square check This program checks whether a number is a perfect square without using square function. | Fully Addressed | |\n| 10 | Student Grade calculation. | Yes | Program 10: Student Grade calculation. This program leads a Student's marks and displays, the corresponding grade using nested if-else statement or if checkholder. | Fully Addressed | |\n| 11 | Extended menu: Based calculator | Yes | Program 11: Extended menu: Based calculator This program improves the calculator by handling invalid menu choices and division by zero. | Fully Addressed | |\n| 12 | Largest of three numbers | Yes | Program 12: Largest of three numbers: This program finds the largest among three numbers using only the conditional (ternary) operator without using if-else statement. | Fully Addressed | |\n| 13 | Grade point to letter grade | Yes | Program 13: Grade point to letter grade: This program is done by using switch statement and some relational checks. | Fully Addressed | |\n| 14 | Concepts Used | Yes | Concepts Used: Operators Used: 1) Arithmetic operators 2) Logical operators 3) Ternary operators Control statements: 1) If 2) nested if 3) switch case Looping statements: 7) For loop 2) while loop | Fully Addressed | |\n| 15 | Conclusion | Yes | Conclusion: All the programs were implemented, compiled, executed successfully, and the expected outputs were obtained. | Fully Addressed | |\n\n## 📋 Section-by-Section Score Breakdown\n| Section | Score (out of 2.0) | Max | Status | Notes |\n| :--- | :---: | :---: | :---: | :--- |\n| 1. Objective of the Lab | 2.0 | 2.0 | Pass | |\n| 2. Problem Understanding | 2.0 | 2.0 | Pass | |\n| 3. Logic / Approach Used | 2.0 | 2.0 | Pass | |\n| 4. Important Variables Table | 2.0 | 2.0 | Pass | |\n| 5. What I Observed | 2.0 | 2.0 | Pass | |\n\n## 🔍 Detailed Analysis\n### 1. Objective of the Lab\nThe student has provided a clear and concise objective for the lab, which aligns with the instruction manual. The objective is well-defined and relevant to the tasks performed in the lab.\n\n### 2. Problem Understanding\nThe student has provided a detailed explanation for each program, including the logic and approach used. The explanations are clear and concise, and the student has used their own words without copying from the instruction manual. However, some of the explanations could be more detailed, especially for the more complex programs.\n\n### 3. Logic / Approach Used\nThe student has provided a detailed explanation for each program, including the logic and approach used. The explanations are clear and concise, and the student has used their own words without copying from the instruction manual. However, some of the explanations could be more detailed, especially for the more complex programs.\n\n### 4. Important Variables Table\nThe student has provided a detailed explanation for each program, including the logic and approach used. The explanations are clear and concise, and the student has used their own words without copying from the instruction manual. However, some of the explanations could be more detailed, especially for the more complex programs.\n\n### 5. What I Observed\nThe student has provided a detailed explanation for each program, including the logic and approach used. The explanations are clear and concise, and the student has used their own words without copying from the instruction manual. However, some of the explanations could be more detailed, especially for the more complex programs.\n\n## ⚠️ Academic & Integrity Checks\n- **Assigned Questions Alignment:** All assigned questions were fully addressed.\n- **Code Copying Violation:** None detected.\n- **5 Core Questions Addressed:** Yes.\n\n## 💡 Key Strengths\n- The student has provided a clear and concise objective for the lab.\n- The student has provided detailed explanations for each program, including the logic and approach used.\n- The student has used their own words without copying from the instruction manual.\n\n## 🎯 Actionable Recommendations for the Student\n1. The student could provide more detailed explanations for the more complex programs.\n2. The student could provide more examples of how the concepts used in the programs are applied in real-world scenarios.\n3. The student could provide more examples of how the programs can be improved or modified to handle edge cases."
+}

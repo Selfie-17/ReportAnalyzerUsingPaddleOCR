@@ -19,7 +19,7 @@ from schemas import (
 )
 
 
-def mock_ocr_success(file_path, python_exe=None):
+def mock_ocr_success(file_path, python_exe=None, **kwargs):
     return {
         "success": True,
         "text": "1. Check whether a number is even or odd\nExplanation: Uses mod 2.",
@@ -31,7 +31,7 @@ def mock_ocr_success(file_path, python_exe=None):
     }
 
 
-def mock_extraction_success(report_text, base_url=None, model=None, temperature=0.1, page_breakdown=None):
+def mock_extraction_success(report_text, base_url=None, model=None, temperature=0.1, page_breakdown=None, **kwargs):
     return ExtractionResult(
         status="success",
         objective_of_lab="Understand loops",
@@ -49,6 +49,16 @@ def mock_extraction_success(report_text, base_url=None, model=None, temperature=
         missing_programs=[f"P{i}" for i in range(2, 11)],
         errors=[]
     )
+
+
+def mock_fast_verification(report_text, assigned_questions=None, **kwargs):
+    return "# 📊 Observation Report Verification Report\n\n## Overall Evaluation\n- **Total Score:** 9.5 / 10.0\n- **Grade:** A\n- **Status:** Approved\n"
+
+
+@pytest.fixture(autouse=True)
+def mock_verify_for_batch_tests():
+    with patch("batch_processor.verify_observation_report_sync", side_effect=mock_fast_verification):
+        yield
 
 
 @patch("batch_processor.run_paddle_worker_sync", side_effect=mock_ocr_success)
@@ -96,6 +106,12 @@ def test_batch_pipeline_3_students_with_failure_resume_and_retry(mock_ext, mock_
             report_s1 = StudentObservationReport.model_validate_json(f.read())
             assert report_s1.student_id == "22001"
             assert report_s1.extraction.programs["P1"].status == "detected"
+            assert report_s1.evaluation is not None
+            assert "Total Score" in report_s1.evaluation
+
+        # Verify standalone evaluation markdown file exists
+        s1_eval_md = os.path.join(pipeline.students_dir, "22001_evaluation.md")
+        assert os.path.exists(s1_eval_md)
 
         # Test Resumability: Create new pipeline instance and run again
         mock_ocr.reset_mock()
@@ -129,3 +145,30 @@ def test_batch_pipeline_3_students_with_failure_resume_and_retry(mock_ext, mock_
             assert "22001.json" in namelist
             assert "22002.json" in namelist
             assert "22003.json" in namelist
+            assert "22001_evaluation.md" in namelist
+
+
+@patch("subprocess.run")
+def test_run_paddle_worker_sync_default_no_timeout(mock_subproc):
+    import subprocess
+    from batch_processor import run_paddle_worker_sync
+    mock_subproc.return_value.returncode = 0
+    mock_subproc.return_value.stdout = json.dumps({"success": True, "text": "Extracted text"})
+    mock_subproc.return_value.stderr = ""
+
+    res = run_paddle_worker_sync("dummy.pdf", python_exe="python")
+    assert res.get("success") is True
+    _, kwargs = mock_subproc.call_args
+    assert kwargs.get("timeout") is None
+
+
+@patch("subprocess.run")
+def test_run_paddle_worker_sync_custom_timeout_expiry(mock_subproc):
+    import subprocess
+    from batch_processor import run_paddle_worker_sync
+    mock_subproc.side_effect = subprocess.TimeoutExpired(cmd=["test"], timeout=10)
+
+    res = run_paddle_worker_sync("dummy.pdf", python_exe="python", timeout=10)
+    assert res.get("success") is False
+    assert "timed out after 10 seconds" in res.get("error")
+

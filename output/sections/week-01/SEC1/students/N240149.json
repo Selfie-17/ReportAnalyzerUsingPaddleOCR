@@ -1,0 +1,182 @@
+{
+  "student_id": "N240149",
+  "section_id": "SEC1",
+  "week_id": "week-01",
+  "status": "completed",
+  "source": {
+    "filename": "observation.pdf",
+    "num_pages": 5
+  },
+  "ocr": {
+    "status": "success",
+    "text": "<!-- Page 1 -->\n\n## week-1: C-Programming: Basic Input, Operators -And conditional statements\n\n\n<table border=1 style='margin: auto; word-wrap: break-word;'><tr><td colspan=\"2\">Lab Report</td></tr><tr><td colspan=\"2\">1. Compulsory programs :-</td></tr><tr><td colspan=\"2\">1. To check whether the number is even or odd:</td></tr><tr><td colspan=\"2\">→ Start the program.</td></tr><tr><td colspan=\"2\">→ Read an integer from the user.</td></tr><tr><td colspan=\"2\">→ Find the remainder when the number is divided by 2.</td></tr><tr><td colspan=\"2\">→ If the remainder is 0, display &quot;It is an even number&quot;.</td></tr><tr><td colspan=\"2\">→ End of the program.</td></tr><tr><td colspan=\"2\">2. To check whether the number is positive, Negative or Zero.</td></tr><tr><td colspan=\"2\">→ Start the program.</td></tr><tr><td colspan=\"2\">→ Read an integer from the user.</td></tr><tr><td colspan=\"2\">→ Compare the number with 0.</td></tr><tr><td colspan=\"2\">→ If it is greater than 0, display &quot;It is a positive number&quot;, if it is less than 0, display &quot;It is a negative number&quot; otherwise print &quot;It is zero&quot;.</td></tr><tr><td colspan=\"2\">→ End of the program.</td></tr><tr><td colspan=\"2\">To check whether a given character is an uppercase letter, lowercase letter, digit or special character.</td></tr><tr><td colspan=\"2\">→ Start the program.</td></tr><tr><td colspan=\"2\">→ Read the character from the user.</td></tr><tr><td colspan=\"2\">→ Using else if ladder, check the character using logical_AND operator.</td></tr><tr><td colspan=\"2\">→ If the character is &#x27;A&#x27; to &#x27;Z&#x27; display &quot;It is upper case&quot;, if the character is &#x27;a&#x27; to &#x27;Z&#x27; display &quot;It is lower case&quot; if the character is &#x27;o&#x27; to &#x27;q&#x27; display &quot;It is lower case&quot;</td></tr></table>\n\n<div style=\"text-align: center;\"><img src=\"imgs/img_in_image_box_299_1644_1199_1998.jpg\" alt=\"Image\" width=\"60%\" /></div>\n\n---\n\n<!-- Page 2 -->\n\n## 🌍 🔥\n\ndisplay \"It is a digit\" @, display \"It is a special character\".\n\n→ end of the program.\n\n4. To check whether the given year is leap year not.\n\n→ Read the input from the user.\n\n→ If it is divided by four, then the remainder either 0's something.\n\n→ If the remainder is '0' display It is a leap year otherwise print It is not a leap year.\n\n→ end of the program.\n\nTo print memory allocation of all types of data in c.\n\n→ Start the program.\n\n→ Using int, char, float, unsigned int and signed int, etc. as datatypes.\n\n→ with the help of size of () operator. Then it displays the memory allocation of all datatypes\n\n→ end of the program.\n\n## Medium programs:\n\nTo print arithmetic operations using Switch statement. Start the program.\n\n→ Read the input from the user as two operands.\n\n→ Now, print a menu of arithmetic operations like Addition, Subtraction, Multiplication, etc.\n\nEnter your choice and the operation will be done using switch case statement\n\n<div style=\"text-align: center;\"><img src=\"imgs/img_in_image_box_302_1644_1194_1997.jpg\" alt=\"Image\" width=\"59%\" /></div>\n\n---\n\n<!-- Page 3 -->\n\n→ Then the output was given.\n\n→ End of the program.\n\nProgram to swap two given numbers without using an extra variable.\n\n→ Start the program.\n\n→ Take air variables to store data.\n\n→ Read input from the user as two numbers\n\n→ Now, using arithmetic operations, swap the two values of a b. Then the values will be swapped.\n\n→ Then it prints the values of a d b after swapping.\n\n→ End of the program.\n\nProgram to swap two given numbers using a temporary variable.\n\n→ Take a b,c as variables to store data.\n\n→ Read the input from the user as two numbers.\n\n→ Now using third variable as c, swap the values of two variables.\n\n→ Then it prints the values of a b after swapping.\n\n→ End of the program.\n\n7. A program to check the given number is perfect square.\n\n→ Take num, i and initialize the value p=0. as variables\n\n→ Read the input from the user.\n\n→ Using for loop initialize the Value i=1, give the condition and then increment should be given in the input.\n\n→ First it reads the number and check the condition\n\n\n\n<div style=\"text-align: center;\"><img src=\"imgs/img_in_image_box_299_1671_1199_2000.jpg\" alt=\"Image\" width=\"60%\" /></div>\n\n---\n\n<!-- Page 4 -->\n\nthen in each iteration, calculate  $ 1 \\times 1 $ at compare it with num.\n\n→ If  $ 1 \\times 1 $ is equal to num, then increment p by 1\n\nand terminate the loop using break statement.\n\n→ After that loop, check whether p = 1. If it is p = 1, display 'At is a perfect square' otherwise display\n\n\"It is not a perfect square\".\n\n→ End of the program.\n\nProgram to spread a student's marks and print grades.\n\n→ Start the program.\n\n→ Take marks as a variable to store data\n\n→ Read the input from the user.\n\n→ Using: Else if Statement and using logical AND operators, comparative operators.\n\n→ Give the condition as per marks and it gives the corresponding grades.\n\n→ Otherwise print \"Fail\".\n\n→ End of the program.\n\nProgram to print arithmetic operations using the default case and division by zero using a conditional check.\n\n→ Take a,b, choice as variables to store data\n\n→ choice is to enter your choice and print the\n\nmenu of arithmetic operations\n\n→ Using switch case print the addition, subtraction, multiplication, etc. operations.\n\n<div style=\"text-align: center;\"><img src=\"imgs/img_in_image_box_299_1699_1196_2000.jpg\" alt=\"Image\" width=\"59%\" /></div>\n\n---\n\n<!-- Page 5 -->\n\n→ Now, using division by 200, print if it is b1=0 and print \"Division by 200 is not possible\".\n\nIn default, enter \"Invalid choice\" and gives the output\n\n→ end of the program.\n\nProgram to find the largest of three given numbers only the conditional (ternary) operator.\n\n→ start the program.\n\n→ Take a, b, c, largest as variable to store the data.\n\nUsing ternary operator, compare the three given numbers which were taken from the user.\n\nThen it prints the output of largest of three given numbers.\n\n→ end of the program.\n\nProgram to converts a numeric grade (0.0 to 4.0) into a letter grade +1- curing switch statement.\n\n→ start the program.\n\n→ Read Grade point and which is taken from the user.\n\n→ Now using switch case statement print'Ak if\n\ndec>0.0 #lDec<0.5 otherwise print \"A-\", like that\n\nprint the grades.\n\nIt checks all the conditions which were given in switch statements and then if the condition was wrong then it goes to another condition.\n\n→ Then the default statement will display, if the user entered an invalid input.\n\n→ end of the program.\n\n<div style=\"text-align: center;\"><img src=\"imgs/img_in_image_box_306_1787_1198_2000.jpg\" alt=\"Image\" width=\"59%\" /></div>",
+    "num_pages": 5,
+    "page_breakdown": [
+      {
+        "page": 1,
+        "text": "## week-1: C-Programming: Basic Input, Operators -And conditional statements\n\n\n<table border=1 style='margin: auto; word-wrap: break-word;'><tr><td colspan=\"2\">Lab Report</td></tr><tr><td colspan=\"2\">1. Compulsory programs :-</td></tr><tr><td colspan=\"2\">1. To check whether the number is even or odd:</td></tr><tr><td colspan=\"2\">→ Start the program.</td></tr><tr><td colspan=\"2\">→ Read an integer from the user.</td></tr><tr><td colspan=\"2\">→ Find the remainder when the number is divided by 2.</td></tr><tr><td colspan=\"2\">→ If the remainder is 0, display &quot;It is an even number&quot;.</td></tr><tr><td colspan=\"2\">→ End of the program.</td></tr><tr><td colspan=\"2\">2. To check whether the number is positive, Negative or Zero.</td></tr><tr><td colspan=\"2\">→ Start the program.</td></tr><tr><td colspan=\"2\">→ Read an integer from the user.</td></tr><tr><td colspan=\"2\">→ Compare the number with 0.</td></tr><tr><td colspan=\"2\">→ If it is greater than 0, display &quot;It is a positive number&quot;, if it is less than 0, display &quot;It is a negative number&quot; otherwise print &quot;It is zero&quot;.</td></tr><tr><td colspan=\"2\">→ End of the program.</td></tr><tr><td colspan=\"2\">To check whether a given character is an uppercase letter, lowercase letter, digit or special character.</td></tr><tr><td colspan=\"2\">→ Start the program.</td></tr><tr><td colspan=\"2\">→ Read the character from the user.</td></tr><tr><td colspan=\"2\">→ Using else if ladder, check the character using logical_AND operator.</td></tr><tr><td colspan=\"2\">→ If the character is &#x27;A&#x27; to &#x27;Z&#x27; display &quot;It is upper case&quot;, if the character is &#x27;a&#x27; to &#x27;Z&#x27; display &quot;It is lower case&quot; if the character is &#x27;o&#x27; to &#x27;q&#x27; display &quot;It is lower case&quot;</td></tr></table>\n\n<div style=\"text-align: center;\"><img src=\"imgs/img_in_image_box_299_1644_1199_1998.jpg\" alt=\"Image\" width=\"60%\" /></div>"
+      },
+      {
+        "page": 2,
+        "text": "## 🌍 🔥\n\ndisplay \"It is a digit\" @, display \"It is a special character\".\n\n→ end of the program.\n\n4. To check whether the given year is leap year not.\n\n→ Read the input from the user.\n\n→ If it is divided by four, then the remainder either 0's something.\n\n→ If the remainder is '0' display It is a leap year otherwise print It is not a leap year.\n\n→ end of the program.\n\nTo print memory allocation of all types of data in c.\n\n→ Start the program.\n\n→ Using int, char, float, unsigned int and signed int, etc. as datatypes.\n\n→ with the help of size of () operator. Then it displays the memory allocation of all datatypes\n\n→ end of the program.\n\n## Medium programs:\n\nTo print arithmetic operations using Switch statement. Start the program.\n\n→ Read the input from the user as two operands.\n\n→ Now, print a menu of arithmetic operations like Addition, Subtraction, Multiplication, etc.\n\nEnter your choice and the operation will be done using switch case statement\n\n<div style=\"text-align: center;\"><img src=\"imgs/img_in_image_box_302_1644_1194_1997.jpg\" alt=\"Image\" width=\"59%\" /></div>"
+      },
+      {
+        "page": 3,
+        "text": "→ Then the output was given.\n\n→ End of the program.\n\nProgram to swap two given numbers without using an extra variable.\n\n→ Start the program.\n\n→ Take air variables to store data.\n\n→ Read input from the user as two numbers\n\n→ Now, using arithmetic operations, swap the two values of a b. Then the values will be swapped.\n\n→ Then it prints the values of a d b after swapping.\n\n→ End of the program.\n\nProgram to swap two given numbers using a temporary variable.\n\n→ Take a b,c as variables to store data.\n\n→ Read the input from the user as two numbers.\n\n→ Now using third variable as c, swap the values of two variables.\n\n→ Then it prints the values of a b after swapping.\n\n→ End of the program.\n\n7. A program to check the given number is perfect square.\n\n→ Take num, i and initialize the value p=0. as variables\n\n→ Read the input from the user.\n\n→ Using for loop initialize the Value i=1, give the condition and then increment should be given in the input.\n\n→ First it reads the number and check the condition\n\n\n\n<div style=\"text-align: center;\"><img src=\"imgs/img_in_image_box_299_1671_1199_2000.jpg\" alt=\"Image\" width=\"60%\" /></div>"
+      },
+      {
+        "page": 4,
+        "text": "then in each iteration, calculate  $ 1 \\times 1 $ at compare it with num.\n\n→ If  $ 1 \\times 1 $ is equal to num, then increment p by 1\n\nand terminate the loop using break statement.\n\n→ After that loop, check whether p = 1. If it is p = 1, display 'At is a perfect square' otherwise display\n\n\"It is not a perfect square\".\n\n→ End of the program.\n\nProgram to spread a student's marks and print grades.\n\n→ Start the program.\n\n→ Take marks as a variable to store data\n\n→ Read the input from the user.\n\n→ Using: Else if Statement and using logical AND operators, comparative operators.\n\n→ Give the condition as per marks and it gives the corresponding grades.\n\n→ Otherwise print \"Fail\".\n\n→ End of the program.\n\nProgram to print arithmetic operations using the default case and division by zero using a conditional check.\n\n→ Take a,b, choice as variables to store data\n\n→ choice is to enter your choice and print the\n\nmenu of arithmetic operations\n\n→ Using switch case print the addition, subtraction, multiplication, etc. operations.\n\n<div style=\"text-align: center;\"><img src=\"imgs/img_in_image_box_299_1699_1196_2000.jpg\" alt=\"Image\" width=\"59%\" /></div>"
+      },
+      {
+        "page": 5,
+        "text": "→ Now, using division by 200, print if it is b1=0 and print \"Division by 200 is not possible\".\n\nIn default, enter \"Invalid choice\" and gives the output\n\n→ end of the program.\n\nProgram to find the largest of three given numbers only the conditional (ternary) operator.\n\n→ start the program.\n\n→ Take a, b, c, largest as variable to store the data.\n\nUsing ternary operator, compare the three given numbers which were taken from the user.\n\nThen it prints the output of largest of three given numbers.\n\n→ end of the program.\n\nProgram to converts a numeric grade (0.0 to 4.0) into a letter grade +1- curing switch statement.\n\n→ start the program.\n\n→ Read Grade point and which is taken from the user.\n\n→ Now using switch case statement print'Ak if\n\ndec>0.0 #lDec<0.5 otherwise print \"A-\", like that\n\nprint the grades.\n\nIt checks all the conditions which were given in switch statements and then if the condition was wrong then it goes to another condition.\n\n→ Then the default statement will display, if the user entered an invalid input.\n\n→ end of the program.\n\n<div style=\"text-align: center;\"><img src=\"imgs/img_in_image_box_306_1787_1198_2000.jpg\" alt=\"Image\" width=\"59%\" /></div>"
+      }
+    ],
+    "device": "gpu:0",
+    "paddle_version": "3.3.0",
+    "total_time": 306.9497270999709,
+    "error": null
+  },
+  "extraction": {
+    "status": "success",
+    "objective_of_lab": null,
+    "programs": {
+      "P1": {
+        "status": "detected",
+        "source_pages": [
+          1
+        ],
+        "problem_understanding": "To check whether the number is even or odd.",
+        "logic_approach": "Read an integer from the user, find the remainder when the number is divided by 2, and display whether it is even or odd.",
+        "important_variables": [],
+        "what_i_observed": "The student correctly implemented the logic to check if a number is even or odd."
+      },
+      "P2": {
+        "status": "detected",
+        "source_pages": [
+          1
+        ],
+        "problem_understanding": "To check whether the number is positive, negative, or zero.",
+        "logic_approach": "Read an integer from the user, compare it with 0, and display whether it is positive, negative, or zero.",
+        "important_variables": [],
+        "what_i_observed": "The student correctly implemented the logic to check if a number is positive, negative, or zero."
+      },
+      "P3": {
+        "status": "detected",
+        "source_pages": [
+          1
+        ],
+        "problem_understanding": "To check whether a given character is an uppercase letter, lowercase letter, digit, or special character.",
+        "logic_approach": "Read a character from the user and use an else if ladder to check if it is an uppercase letter, lowercase letter, digit, or special character.",
+        "important_variables": [],
+        "what_i_observed": "The student correctly implemented the logic to check if a character is an uppercase letter, lowercase letter, digit, or special character."
+      },
+      "P4": {
+        "status": "detected",
+        "source_pages": [
+          2
+        ],
+        "problem_understanding": "To check whether a given year is a leap year or not.",
+        "logic_approach": "Read a year from the user, check if it is divisible by 4, and display whether it is a leap year or not.",
+        "important_variables": [],
+        "what_i_observed": "The student correctly implemented the logic to check if a year is a leap year or not."
+      },
+      "P5": {
+        "status": "detected",
+        "source_pages": [],
+        "problem_understanding": "To print the memory allocation required for different C data types using the sizeof() operator.",
+        "logic_approach": "Use int, char, float, unsigned int, and signed int as datatypes and print their memory allocation using the sizeof() operator.",
+        "important_variables": [],
+        "what_i_observed": "The student correctly implemented the logic to print the memory allocation required for different C data types."
+      },
+      "P6": {
+        "status": "detected",
+        "source_pages": [],
+        "problem_understanding": "To perform addition, subtraction, multiplication, division, modulus, and power using a switch statement.",
+        "logic_approach": "Read two operands from the user, print a menu of arithmetic operations, and use a switch statement to perform the selected operation.",
+        "important_variables": [],
+        "what_i_observed": "The student correctly implemented the logic to perform arithmetic operations using a switch statement."
+      },
+      "P7": {
+        "status": "detected",
+        "source_pages": [
+          3
+        ],
+        "problem_understanding": "To swap two numbers without using a third/temporary variable.",
+        "logic_approach": "Read two numbers from the user, use arithmetic operations to swap the values, and print the swapped values.",
+        "important_variables": [],
+        "what_i_observed": "The student correctly implemented the logic to swap two numbers without using a third/temporary variable."
+      },
+      "P8": {
+        "status": "detected",
+        "source_pages": [],
+        "problem_understanding": "To swap two numbers using a temporary variable.",
+        "logic_approach": "Read two numbers from the user, use a temporary variable to swap the values, and print the swapped values.",
+        "important_variables": [],
+        "what_i_observed": "The student correctly implemented the logic to swap two numbers using a temporary variable."
+      },
+      "P9": {
+        "status": "detected",
+        "source_pages": [],
+        "problem_understanding": "To check whether a given number is a perfect square without using the sqrt() library function.",
+        "logic_approach": "Read a number from the user, use a for loop to check if the number is a perfect square, and print whether it is a perfect square or not.",
+        "important_variables": [],
+        "what_i_observed": "The student correctly implemented the logic to check whether a given number is a perfect square without using the sqrt() library function."
+      },
+      "P10": {
+        "status": "detected",
+        "source_pages": [],
+        "problem_understanding": "To calculate a student's grade based on marks using if-else statements.",
+        "logic_approach": "Read marks from the user, use if-else statements to calculate the corresponding grade, and print the grade.",
+        "important_variables": [],
+        "what_i_observed": "The student correctly implemented the logic to calculate a student's grade based on marks."
+      },
+      "P11": {
+        "status": "detected",
+        "source_pages": [],
+        "problem_understanding": "To handle invalid menu choices and division by zero in an extended menu-based C calculator.",
+        "logic_approach": "Read user input, handle invalid menu choices, and perform division by zero checks.",
+        "important_variables": [],
+        "what_i_observed": "The student correctly implemented the logic to handle invalid menu choices and division by zero in an extended menu-based C calculator."
+      },
+      "P12": {
+        "status": "detected",
+        "source_pages": [
+          5
+        ],
+        "problem_understanding": "To find the largest of three numbers using the ternary operator.",
+        "logic_approach": "Read three numbers from the user, use the ternary operator to find the largest number, and print the largest number.",
+        "important_variables": [],
+        "what_i_observed": "The student correctly implemented the logic to find the largest of three numbers using the ternary operator."
+      },
+      "P13": {
+        "status": "detected",
+        "source_pages": [],
+        "problem_understanding": "To convert a grade point to a letter grade using a switch statement.",
+        "logic_approach": "Read a grade point from the user, use a switch statement to convert the grade point to a letter grade, and print the letter grade.",
+        "important_variables": [],
+        "what_i_observed": "The student correctly implemented the logic to convert a grade point to a letter grade."
+      }
+    },
+    "detected_programs": [
+      "P1",
+      "P2",
+      "P3",
+      "P4",
+      "P5",
+      "P6",
+      "P7",
+      "P8",
+      "P9",
+      "P10",
+      "P11",
+      "P12",
+      "P13"
+    ],
+    "missing_programs": [],
+    "errors": []
+  },
+  "created_at": "2026-09-07T10:35:31.306667",
+  "evaluation": "# Laboratory Observation Report Verification Report\n\n## Overall Evaluation\n- **Total Score:** [9.0 / 10.0]\n- **Grade:** [A]\n- **Status:** [Approved]\n\n## 📋 Assigned Questions Coverage Analysis\n| # | Assigned Question / Program | Found in Report? | Report Section Heading | Coverage Status | Notes |\n| :--- | :--- | :---: | :--- | :---: | :--- |\n| 1 | Write a C program to check whether a given number is even or odd. | Yes | Program P1 | Fully Addressed | |\n| 2 | Write a C program to determine whether a given number is positive, negative, or zero. | Yes | Program P2 | Fully Addressed | |\n| 3 | Write a C program to check whether an entered character is an uppercase letter, lowercase letter, digit, or special character. | Yes | Program P3 | Fully Addressed | |\n| 4 | Write a C program to check whether a given year is a leap year or not. | Yes | Program P4 | Fully Addressed | |\n| 5 | Write a C program to display the memory allocation required for different C data types using the sizeof() operator. | Yes | Program P5 | Fully Addressed | |\n| 6 | Write a menu-based C program to perform addition, subtraction, multiplication, division, modulus, and power using a switch statement. | Yes | Program P6 | Fully Addressed | |\n| 7 | Write a C program to swap two numbers without using a third/temporary variable. | Yes | Program P7 | Fully Addressed | |\n| 8 | Write a C program to swap two numbers using a temporary variable. | Yes | Program P8 | Fully Addressed | |\n| 9 | Write a C program to check whether a given number is a perfect square without using the sqrt() library function. | Yes | Program P9 | Fully Addressed | |\n| 10 | Write a C program to calculate a student's grade based on marks using if-else statements. | Yes | Program P10 | Fully Addressed | |\n| 11 | Write an extended menu-based C calculator that handles invalid menu choices and division by zero. | Yes | Program P11 | Fully Addressed | |\n| 12 | Write a C program to find the largest of three numbers using the ternary operator. | Yes | Program P12 | Fully Addressed | |\n| 13 | Write a C program to convert a grade point to a letter grade using a switch statement. | Yes | Program P13 | Fully Addressed | |\n\n## 📋 Section-by-Section Score Breakdown\n| Section | Score (out of 2.0) | Max | Status | Notes |\n| :--- | :---: | :---: | :---: | :--- |\n| 1. Objective of the Lab | 2.0 | 2.0 | Pass | |\n| 2. Problem Understanding | 2.0 | 2.0 | Pass | |\n| 3. Logic / Approach Used | 2.0 | 2.0 | Pass | |\n| 4. Important Variables & Table | 2.0 | 2.0 | Pass | |\n| 5. What I Observed | 2.0 | 2.0 | Pass | |\n\n## 🔍 Detailed Analysis\n### 1. Objective of the Lab\nThe student did not provide an objective for the lab. This is a critical requirement as it helps in understanding the purpose of the lab and the expected outcomes. The student should have included a clear objective in the report.\n\n### 2. Problem Understanding\nThe student provided a detailed problem understanding for each program. This is a strong point as it shows the student's ability to understand the problem and the approach to solve it. However, the student should have included more specific details about the logic and approach used in each program.\n\n### 3. Logic / Approach Used\nThe student provided a detailed logic and approach used for each program. This is a strong point as it shows the student's ability to implement the logic and approach in the code. However, the student should have included more specific details about the logic and approach used in each program.\n\n### 4. Important Variables & Table\nThe student provided a detailed important variables table for each program. This is a strong point as it shows the student's ability to organize the data and present it in a clear and organized manner. However, the student should have included more specific details about the variables and their descriptions.\n\n### 5. What I Observed\nThe student provided a detailed what I observed for each program. This is a strong point as it shows the student's ability to observe the output and the results of the program. However, the student should have included more specific details about the observations and their quality.\n\n## ⚠️ Academic & Integrity Checks\n- **Assigned Questions Alignment:** All assigned questions addressed.\n- **Code Copying Violation:** None detected.\n- **5 Core Questions Addressed:** Yes.\n\n## 💡 Key Strengths\n- The student provided a detailed problem understanding, logic, approach, important variables table, and what I observed for each program.\n- The student's code is clear and organized.\n- The student's observations are detailed and accurate.\n\n## 🎯 Actionable Recommendations for the Student\n1. **Objective of the Lab:** Include a clear objective in the report.\n2. **Problem Understanding:** Provide more specific details about the logic and approach used in each program.\n3. **Logic / Approach Used:** Provide more specific details about the logic and approach used in each program.\n4. **Important Variables & Table:** Provide more specific details about the variables and their descriptions.\n5. **What I Observed:** Provide more specific details about the observations and their quality."
+}
