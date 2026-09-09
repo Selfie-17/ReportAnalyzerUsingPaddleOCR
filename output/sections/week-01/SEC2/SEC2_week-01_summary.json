@@ -1,0 +1,24 @@
+{
+  "section_id": "SEC2",
+  "week_id": "week-01",
+  "total_students": 2,
+  "successful": 2,
+  "failed": 0,
+  "pending": 0,
+  "program_detection": {
+    "P1": 2,
+    "P2": 2,
+    "P3": 2,
+    "P4": 2,
+    "P5": 2,
+    "P6": 2,
+    "P7": 2,
+    "P8": 2,
+    "P9": 2,
+    "P10": 2,
+    "P11": 2,
+    "P12": 2,
+    "P13": 2
+  },
+  "generated_at": "2026-09-08T20:13:26.273667"
+}

@@ -2637,6 +2637,7 @@ def evaluate_observation_report(
         "format": "json",
         "options": {
             "temperature": temperature,
+            "num_ctx": 16384,
         }
     }
 

@@ -76,15 +76,52 @@ def _clean_json_response(raw_text: str) -> str:
     return cleaned
 
 
+def _clean_ocr_text_for_llm(raw_text: str) -> str:
+    """
+    Simplifies verbose HTML tables and tags emitted by PaddleOCR into clean,
+    token-efficient Markdown tables for optimal LLM context efficiency.
+    """
+    if not raw_text:
+        return ""
+    text = raw_text
+
+    # Replace div wrappers with heading / clean text
+    text = re.sub(r'<div[^>]*>(.*?)</div>', r'### \1', text, flags=re.IGNORECASE | re.DOTALL)
+
+    # Convert HTML tables to standard Markdown tables
+    def _convert_table(match):
+        table_html = match.group(0)
+        rows = re.findall(r'<tr[^>]*>(.*?)</tr>', table_html, flags=re.IGNORECASE | re.DOTALL)
+        if not rows:
+            return ""
+        md_lines = []
+        for r_idx, row in enumerate(rows):
+            cols = re.findall(r'<t[dh][^>]*>(.*?)</t[dh]>', row, flags=re.IGNORECASE | re.DOTALL)
+            cols = [re.sub(r'<[^>]+>', '', c).strip() for c in cols]
+            if cols:
+                md_lines.append("| " + " | ".join(cols) + " |")
+                if r_idx == 0:
+                    md_lines.append("| " + " | ".join(["---"] * len(cols)) + " |")
+        return "\n" + "\n".join(md_lines) + "\n"
+
+    text = re.sub(r'<table[^>]*>.*?</table>', _convert_table, text, flags=re.IGNORECASE | re.DOTALL)
+    # Remove any remaining orphan HTML formatting tags
+    text = re.sub(r'</?(?:span|p|font|b|i|u|center)[^>]*>', '', text, flags=re.IGNORECASE)
+    # Clean up multiple blank lines
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip()
+
+
 def _call_ollama(
     prompt: str,
     system_prompt: str,
     base_url: str = DEFAULT_OLLAMA_URL,
     model: str = DEFAULT_MODEL,
     temperature: float = 0.1,
-    timeout: int = 180
+    timeout: int = 180,
+    num_ctx: int = 16384
 ) -> Tuple[bool, str, Optional[str]]:
-    """Calls Ollama chat endpoint with JSON format enforcement."""
+    """Calls Ollama chat endpoint with JSON format enforcement and expanded context window."""
     endpoint = f"{base_url.rstrip('/')}/api/chat"
     payload = {
         "model": model,
@@ -96,6 +133,7 @@ def _call_ollama(
         "format": "json",
         "options": {
             "temperature": temperature,
+            "num_ctx": num_ctx,
         }
     }
 
@@ -197,19 +235,22 @@ def extract_observation_report(
             errors=["Empty report text provided for extraction"]
         )
 
+    # Convert verbose HTML table tags into compact Markdown to conserve LLM tokens
+    llm_clean_text = _clean_ocr_text_for_llm(text_clean)
+
     if assigned_questions and assigned_questions.strip():
         user_prompt = (
             "The student was assigned the following lab programs/questions:\n"
             f"```text\n{assigned_questions.strip()}\n```\n\n"
             "Extract the structured observation report from the following OCR text:\n\n"
-            f"```markdown\n{text_clean}\n```\n\n"
+            f"```markdown\n{llm_clean_text}\n```\n\n"
             "Identify the programs (P1, P2, etc.) matching the student's report. "
             "Remember: output strictly valid JSON matching the schema. Do not invent missing sections or programs."
         )
     else:
         user_prompt = (
             "Extract the structured observation report from the following OCR text:\n\n"
-            f"```markdown\n{text_clean}\n```\n\n"
+            f"```markdown\n{llm_clean_text}\n```\n\n"
             "Remember: output strictly valid JSON matching the schema. Do not invent missing sections."
         )
 
@@ -293,32 +334,53 @@ def _parse_and_validate_json(raw_content: str) -> Tuple[Optional[Dict[str, Any]]
 
 def _build_extraction_result(data: Dict[str, Any], expected_count: Optional[int] = None) -> ExtractionResult:
     """Normalizes raw dictionary into validated ExtractionResult."""
-    objective = data.get("objective_of_lab")
+    objective = (
+        data.get("objective_of_lab")
+        or data.get("objective")
+        or data.get("lab_objective")
+        or data.get("overall_objective")
+    )
     if objective is not None:
         objective = str(objective).strip()
         if objective.lower() in ("null", "none", ""):
             objective = None
 
     raw_programs = data.get("programs", {})
-    if not isinstance(raw_programs, dict):
-        raw_programs = {}
+    normalized_incoming: Dict[str, Dict[str, Any]] = {}
+    max_prog_num = expected_count if expected_count is not None else 10
+
+    # Collect programs whether returned as list or dict
+    if isinstance(raw_programs, list):
+        for idx, item in enumerate(raw_programs):
+            if not isinstance(item, dict):
+                continue
+            p_num = None
+            for key_field in ("program", "program_number", "id", "name", "title"):
+                val = item.get(key_field)
+                if val:
+                    m = re.search(r"\d+", str(val))
+                    if m:
+                        p_num = int(m.group(0))
+                        break
+            if p_num is None:
+                p_num = idx + 1
+            max_prog_num = max(max_prog_num, p_num)
+            normalized_incoming[f"P{p_num}"] = item
+
+    elif isinstance(raw_programs, dict):
+        for k, v in raw_programs.items():
+            if not isinstance(v, dict):
+                continue
+            m = re.search(r"\d+", str(k))
+            if m:
+                p_num = int(m.group(0))
+                max_prog_num = max(max_prog_num, p_num)
+                std_key = f"P{p_num}"
+                normalized_incoming[std_key] = v
 
     programs: Dict[str, ProgramDetails] = {}
     detected: List[str] = []
     missing: List[str] = []
-
-    # Collect any programs under aliases (e.g. "Program 1" -> "P1")
-    normalized_incoming: Dict[str, Dict[str, Any]] = {}
-    max_prog_num = expected_count if expected_count is not None else 10
-    for k, v in raw_programs.items():
-        if not isinstance(v, dict):
-            continue
-        m = re.search(r"\d+", str(k))
-        if m:
-            p_num = int(m.group(0))
-            max_prog_num = max(max_prog_num, p_num)
-            std_key = f"P{p_num}"
-            normalized_incoming[std_key] = v
 
     # Ensure canonical keys cover all expected programs (e.g. P1..P3, P1..P10, P1..P13)
     canonical_keys = [f"P{i}" for i in range(1, max_prog_num + 1)]
@@ -331,12 +393,12 @@ def _build_extraction_result(data: Dict[str, Any], expected_count: Optional[int]
             continue
 
         raw_status = str(item.get("status", "")).lower()
-        has_content = any([
-            item.get("problem_understanding"),
-            item.get("logic_approach"),
-            item.get("what_i_observed"),
-            item.get("important_variables")
-        ])
+        prob = item.get("problem_understanding") or item.get("problem") or item.get("understanding")
+        logic = item.get("logic_approach") or item.get("logic") or item.get("approach")
+        obs = item.get("what_i_observed") or item.get("observations") or item.get("observation")
+        vars_raw = item.get("important_variables") or item.get("variables") or []
+
+        has_content = any([prob, logic, obs, vars_raw])
 
         if raw_status == "detected" or has_content:
             status = "detected"
@@ -346,15 +408,17 @@ def _build_extraction_result(data: Dict[str, Any], expected_count: Optional[int]
             missing.append(key)
 
         # Parse variables
-        raw_vars = item.get("important_variables", [])
         clean_vars: List[VariableItem] = []
-        if isinstance(raw_vars, list):
-            for v in raw_vars:
-                if isinstance(v, dict) and "variable" in v and "purpose" in v:
-                    clean_vars.append(VariableItem(
-                        variable=str(v["variable"]).strip(),
-                        purpose=str(v["purpose"]).strip()
-                    ))
+        if isinstance(vars_raw, list):
+            for v in vars_raw:
+                if isinstance(v, dict):
+                    v_name = v.get("variable") or v.get("name") or v.get("var")
+                    v_purpose = v.get("purpose") or v.get("description") or v.get("role")
+                    if v_name is not None and v_purpose is not None:
+                        clean_vars.append(VariableItem(
+                            variable=str(v_name).strip(),
+                            purpose=str(v_purpose).strip()
+                        ))
 
         def _clean_str(val: Any) -> Optional[str]:
             if val is None:
@@ -367,10 +431,10 @@ def _build_extraction_result(data: Dict[str, Any], expected_count: Optional[int]
         programs[key] = ProgramDetails(
             status=status,
             source_pages=[],
-            problem_understanding=_clean_str(item.get("problem_understanding")),
-            logic_approach=_clean_str(item.get("logic_approach")),
+            problem_understanding=_clean_str(prob),
+            logic_approach=_clean_str(logic),
             important_variables=clean_vars,
-            what_i_observed=_clean_str(item.get("what_i_observed"))
+            what_i_observed=_clean_str(obs)
         )
 
     # Cross-Program Deduplication Guardrail:
@@ -408,6 +472,9 @@ def _build_extraction_result(data: Dict[str, Any], expected_count: Optional[int]
     missing.sort(key=lambda x: int(re.search(r'\d+', x).group(0)) if re.search(r'\d+', x) else 0)
 
     overall_status = "success" if detected else ("partial" if objective else "failed")
+    errors = []
+    if overall_status == "failed":
+        errors.append("No valid laboratory programs or lab objective could be extracted from the document.")
 
     return ExtractionResult(
         status=overall_status,
@@ -415,5 +482,5 @@ def _build_extraction_result(data: Dict[str, Any], expected_count: Optional[int]
         programs=programs,
         detected_programs=detected,
         missing_programs=missing,
-        errors=[]
+        errors=errors
     )

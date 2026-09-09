@@ -145,3 +145,62 @@ def test_extract_observation_report_with_assigned_questions(mock_call):
     prompt_arg = mock_call.call_args[1]["prompt"]
     assert "Program 1: Factorial of a Number" in prompt_arg
     assert "Program 1: Factorial" in prompt_arg
+
+
+def test_clean_ocr_text_for_llm_converts_html_tables():
+    from extractor import _clean_ocr_text_for_llm
+    raw_html = (
+        "<div style='text-align: center;'>Variables</div>\n"
+        "<table border=1 style='margin: auto;'><tr><td>Variable</td><td>Purpose</td></tr>"
+        "<tr><td>n</td><td>Number</td></tr></table>"
+    )
+    cleaned = _clean_ocr_text_for_llm(raw_html)
+    assert "| Variable | Purpose |" in cleaned
+    assert "| --- | --- |" in cleaned
+    assert "| n | Number |" in cleaned
+    assert "<table" not in cleaned
+    assert "<div" not in cleaned
+
+
+def test_build_extraction_result_handles_list_and_aliases():
+    from extractor import _build_extraction_result
+    raw_llm_list = {
+        "objective": "Practice basic C logic",
+        "programs": [
+            {
+                "name": "Even or Odd",
+                "problem": "Check even or odd",
+                "logic": "Modulus 2",
+                "variables": [{"name": "n", "purpose": "input number"}],
+                "observations": "Remainder is 0 for even"
+            },
+            {
+                "name": "Positive, Negative, or Zero",
+                "problem": "Check sign",
+                "logic": "Compare with 0",
+                "variables": [{"name": "val", "role": "input value"}],
+                "observations": "Zero is neither"
+            }
+        ]
+    }
+    res = _build_extraction_result(raw_llm_list, expected_count=2)
+    assert res.status == "success"
+    assert res.objective_of_lab == "Practice basic C logic"
+    assert res.detected_programs == ["P1", "P2"]
+    assert res.programs["P1"].problem_understanding == "Check even or odd"
+    assert res.programs["P1"].important_variables[0].variable == "n"
+    assert res.programs["P2"].important_variables[0].variable == "val"
+
+
+@patch("extractor.requests.post")
+def test_call_ollama_passes_num_ctx(mock_post):
+    from extractor import _call_ollama
+    mock_resp = mock_post.return_value
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"message": {"content": "{}"}}
+
+    _call_ollama(prompt="test", system_prompt="sys", num_ctx=16384)
+    mock_post.assert_called_once()
+    payload = mock_post.call_args[1]["json"]
+    assert payload["options"]["num_ctx"] == 16384
+
