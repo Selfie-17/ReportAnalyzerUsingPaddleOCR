@@ -1,0 +1,24 @@
+{
+  "week_id": "week-04",
+  "section_id": "SEC2",
+  "status": "completed",
+  "total_students": 1,
+  "successful": 1,
+  "failed": 0,
+  "pending": 0,
+  "students": [
+    {
+      "student_id": "N241003",
+      "section_id": "SEC2",
+      "status": "completed",
+      "stage": null,
+      "output": "N241003.json",
+      "error": null,
+      "time_taken": 0.0,
+      "ocr_status": "completed",
+      "extraction_status": "completed",
+      "evaluation_status": "completed"
+    }
+  ],
+  "generated_at": "2026-09-15T15:23:01.163900"
+}

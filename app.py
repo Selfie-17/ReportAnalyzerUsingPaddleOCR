@@ -7,6 +7,7 @@ import json
 import time
 import zipfile
 import re
+from typing import Any, Dict, List, Optional, Union
 import pandas as pd
 import pymupdf as fitz  # Modern PyMuPDF import for PDF preview and page rendering
 
@@ -25,6 +26,12 @@ from verifier import (
     parse_evaluation_scores,
     parse_assigned_questions,
     parse_instruction_manual,
+    match_report_programs_to_questions,
+    evaluate_holistic_student,
+    render_holistic_evaluation_markdown,
+    ingest_student_code_from_json_or_files,
+    DEFAULT_MATCHED_THRESHOLD,
+    DEFAULT_REVIEW_THRESHOLD,
 )
 from extractor import extract_observation_report
 from schemas import (
@@ -33,6 +40,12 @@ from schemas import (
     OcrResult,
     CompleteSectionReport,
     SectionSummary,
+    ReportProgramEntry,
+    ReportExtractionResult,
+    StudentCodeSnippet,
+    StudentCodeCollection,
+    QuestionMatch,
+    HolisticEvaluationResult,
 )
 from batch_processor import (
     validate_and_extract_zip,
@@ -41,6 +54,25 @@ from batch_processor import (
     SecurityError,
     get_paddle_python,
 )
+
+
+def _format_program_badge(p: Any) -> str:
+    """Safely formats a detected or missing program entry for display whether string, dict, or object."""
+    if isinstance(p, str):
+        return p
+    if isinstance(p, dict):
+        r_id = p.get("report_program_id") or p.get("program_id") or p.get("problem_id") or ""
+        title = p.get("program_title") or p.get("title") or ""
+        if r_id and title:
+            return f"{r_id}: {title}"
+        return r_id or title or str(p)
+    if hasattr(p, "report_program_id"):
+        r_id = getattr(p, "report_program_id", "")
+        title = getattr(p, "program_title", "")
+        if r_id and title:
+            return f"{r_id}: {title}"
+        return r_id or title or str(p)
+    return str(p)
 
 
 # ============================================================
@@ -80,14 +112,26 @@ if "single_student_report" not in st.session_state:
 if "verification_result" not in st.session_state:
     st.session_state["verification_result"] = ""
 
-if "assigned_questions" not in st.session_state:
-    st.session_state["assigned_questions"] = WEEK1_13_PROGRAMS_PRESET
-
 if "instruction_manual" not in st.session_state:
     st.session_state["instruction_manual"] = OFFICIAL_INSTRUCTION_MANUAL
 
 if "debug_stdout" not in st.session_state:
     st.session_state["debug_stdout"] = ""
+
+if "student_code_collection" not in st.session_state:
+    st.session_state["student_code_collection"] = None
+
+if "question_matches" not in st.session_state:
+    st.session_state["question_matches"] = []
+
+if "holistic_evaluation_result" not in st.session_state:
+    st.session_state["holistic_evaluation_result"] = None
+
+if "evaluation_result" not in st.session_state:
+    st.session_state["evaluation_result"] = None
+
+if "holistic_markdown" not in st.session_state:
+    st.session_state["holistic_markdown"] = ""
 
 # Batch session states
 if "batch_zip_id" not in st.session_state:
@@ -192,66 +236,35 @@ st.caption(
 )
 
 # ============================================================
-# TOP CONFIGURATION: RUNTIME ASSIGNED QUESTIONS & INSTRUCTION MANUAL
+# TOP CONFIGURATION: INSTRUCTION MANUAL / RUBRIC (OPTIONAL)
 # ============================================================
-with st.expander("📝 Runtime Configuration: Assigned Questions & Instruction Manual", expanded=True):
+with st.expander("📖 Evaluation Criteria & Instruction Manual (Optional Guidelines)", expanded=False):
     st.caption(
-        "Both the assigned questions and instruction manual are dynamic runtime inputs. "
-        "The system evaluates whatever questions and criteria are supplied here without hardcoded assumptions."
+        "The system evaluates the student's observation report directly against their submitted .c code files. "
+        "Students are asked to answer/document only a subset of their programs in the report; unselected programs are not penalized."
     )
-    col_q, col_m = st.columns(2)
-    with col_q:
-        st.markdown("**1. Assigned Questions (Runtime Data)**")
-        cp1, cp2, cp3 = st.columns([1.2, 1, 0.8])
-        with cp1:
-            if st.button("📋 Week 1 (13 Progs)", use_container_width=True, help="Load 13 standard C programs"):
-                st.session_state["assigned_questions"] = WEEK1_13_PROGRAMS_PRESET
-                st.rerun()
-        with cp2:
-            if st.button("📋 Manual (5 Progs)", use_container_width=True, help="Load 5 standard programs"):
-                st.session_state["assigned_questions"] = DEFAULT_MANUAL_QUESTIONS_PRESET
-                st.rerun()
-        with cp3:
-            if st.button("🗑️ Clear", use_container_width=True, help="Clear assigned questions", key="btn_clear_questions"):
-                st.session_state["assigned_questions"] = ""
-                st.rerun()
+    mp1, mp2 = st.columns(2)
+    with mp1:
+        if st.button("📖 Load Default 5-Section Rubric", use_container_width=True, help="Load official 5-section manual"):
+            st.session_state["instruction_manual"] = OFFICIAL_INSTRUCTION_MANUAL
+            st.rerun()
+    with mp2:
+        if st.button("🗑️ Clear Manual", use_container_width=True, help="Clear manual", key="btn_clear_manual"):
+            st.session_state["instruction_manual"] = ""
+            st.rerun()
 
-        parsed_q = parse_assigned_questions(st.session_state.get("assigned_questions", ""))
-        st.caption(f"✓ **{len(parsed_q)} questions parsed dynamically**")
+    parsed_man = parse_instruction_manual(st.session_state.get("instruction_manual", ""))
+    sec_names = parsed_man.get("per_question_requirements", [])
+    st.caption(f"✓ **{len(sec_names)} required section(s) detected:** `{', '.join(sec_names)}`")
 
-        assigned_questions_top = st.text_area(
-            "Assigned Questions:",
-            value=st.session_state.get("assigned_questions", WEEK1_13_PROGRAMS_PRESET),
-            height=140,
-            placeholder="Enter the lab questions (any language, any topic, any count)...",
-            key="top_assigned_questions"
-        )
-        st.session_state["assigned_questions"] = assigned_questions_top
-
-    with col_m:
-        st.markdown("**2. Instruction Manual / Criteria (Runtime Data)**")
-        mp1, mp2 = st.columns(2)
-        with mp1:
-            if st.button("📖 Default Manual", use_container_width=True, help="Load official 5-section manual"):
-                st.session_state["instruction_manual"] = OFFICIAL_INSTRUCTION_MANUAL
-                st.rerun()
-        with mp2:
-            if st.button("🗑️ Clear", use_container_width=True, help="Clear manual", key="btn_clear_manual"):
-                st.session_state["instruction_manual"] = ""
-                st.rerun()
-
-        parsed_man = parse_instruction_manual(st.session_state.get("instruction_manual", ""))
-        sec_names = parsed_man.get("per_question_requirements", [])
-        st.caption(f"✓ **{len(sec_names)} required section(s) detected:** `{', '.join(sec_names)}`")
-
-        manual_text_top = st.text_area(
-            "Instruction Manual / Evaluation Requirements:",
-            value=st.session_state.get("instruction_manual", OFFICIAL_INSTRUCTION_MANUAL),
-            height=140,
-            placeholder="Enter the instruction manual defining what sections and rules are required...",
-            key="top_instruction_manual"
-        )
-        st.session_state["instruction_manual"] = manual_text_top
+    manual_text_top = st.text_area(
+        "Instruction Manual / Evaluation Requirements:",
+        value=st.session_state.get("instruction_manual", OFFICIAL_INSTRUCTION_MANUAL),
+        height=140,
+        placeholder="Enter the instruction manual defining what sections and rules are required...",
+        key="top_instruction_manual"
+    )
+    st.session_state["instruction_manual"] = manual_text_top
 
 tab_single, tab_batch = st.tabs([
     "📄 Single Student Report",
@@ -281,6 +294,11 @@ with tab_single:
         st.session_state["single_student_report"] = None
         st.session_state["verification_result"] = ""
         st.session_state["debug_stdout"] = ""
+        st.session_state["student_code_collection"] = None
+        st.session_state["question_matches"] = []
+        st.session_state["holistic_evaluation_result"] = None
+        st.session_state["evaluation_result"] = None
+        st.session_state["holistic_markdown"] = ""
         st.info("👆 Upload an image or PDF report to begin OCR extraction.")
     else:
         # Detect new file upload and reset session state accordingly
@@ -294,6 +312,11 @@ with tab_single:
             st.session_state["single_student_report"] = None
             st.session_state["verification_result"] = ""
             st.session_state["debug_stdout"] = ""
+            st.session_state["student_code_collection"] = None
+            st.session_state["question_matches"] = []
+            st.session_state["holistic_evaluation_result"] = None
+            st.session_state["evaluation_result"] = None
+            st.session_state["holistic_markdown"] = ""
 
         # Preview Section
         file_ext = os.path.splitext(uploaded_file.name)[1].lower()
@@ -602,8 +625,7 @@ with tab_single:
                         base_url=ollama_url,
                         model=selected_model,
                         temperature=temperature,
-                        page_breakdown=st.session_state["ocr_meta"].get("page_breakdown", []),
-                        assigned_questions=st.session_state.get("assigned_questions", "")
+                        page_breakdown=st.session_state["ocr_meta"].get("page_breakdown", [])
                     )
                     t_ext_total = time.perf_counter() - t_ext_start
 
@@ -633,205 +655,354 @@ with tab_single:
                 st.session_state["single_student_report"] = report
                 st.success(f"✅ Structured extraction complete in {t_ext_total:.2f}s!")
 
-            # STEP 5: REVIEW STRUCTURED JSON
+            # STEP 5: REVIEW STRUCTURED OBSERVATION REPORT
             if st.session_state.get("structured_extraction") and st.session_state.get("single_student_report"):
                 st.divider()
-                st.subheader("📊 Step 5: Review Structured Report & Pydantic Validation")
+                st.subheader("📊 Step 5: Detected Report Programs & Validation")
 
                 report = st.session_state["single_student_report"]
                 ext = report.extraction
+                report_entries = ext.get_report_entries()
 
-                # Sort programs canonically by program number
-                all_pkeys = sorted(
-                    list(ext.programs.keys()),
-                    key=lambda x: int(re.sub(r"\D", "", x)) if re.sub(r"\D", "", x) else 999
-                )
-                if not all_pkeys:
-                    all_pkeys = [f"P{i}" for i in range(1, 11)]
-
-                # Summary Metrics
-                c1, c2, c3, c4 = st.columns(4)
+                c1, c2, c3 = st.columns(3)
                 with c1:
                     st.metric("Extraction Status", ext.status.upper())
                 with c2:
-                    st.metric("Detected Programs", f"{len(ext.detected_programs)} / {len(all_pkeys)}")
+                    st.metric("Report Entries Documented", f"{len(report_entries)} program(s)")
                 with c3:
-                    st.metric("Missing Programs", f"{len(ext.missing_programs)} / {len(all_pkeys)}")
-                with c4:
                     has_obj = "Present" if ext.objective_of_lab else "Not Detected"
                     st.metric("Lab Objective", has_obj)
 
-                # Program status badges (in rows of up to 10 columns)
-                for row_start in range(0, len(all_pkeys), 10):
-                    row_keys = all_pkeys[row_start:row_start + 10]
-                    badge_cols = st.columns(len(row_keys))
-                    for pkey, b_col in zip(row_keys, badge_cols):
-                        pdet = ext.programs.get(pkey)
-                        is_det = pdet and pdet.status == "detected"
-                        with b_col:
-                            if is_det:
-                                st.success(f"**{pkey}**\n\n✓ Detected")
-                            else:
-                                st.caption(f"**{pkey}**\n\n— Absent")
+                if report_entries:
+                    st.markdown("**Detected Report Entries (`R1, R2...`):**")
+                    badge_cols = st.columns(min(len(report_entries), 6))
+                    for idx, entry in enumerate(report_entries):
+                        with badge_cols[idx % len(badge_cols)]:
+                            written_tag = f" (Prog {entry.student_written_program_number})" if entry.student_written_program_number else ""
+                            st.success(f"**{entry.report_program_id}**{written_tag}\n\n{entry.program_title[:25]}")
 
                 if ext.objective_of_lab:
-                    with st.expander("🎯 Extracted Objective of Lab", expanded=True):
+                    with st.expander("🎯 Extracted Objective of Lab", expanded=False):
                         st.write(ext.objective_of_lab)
 
-                # Detailed Program Cards
-                range_label = f"{all_pkeys[0]}..{all_pkeys[-1]}" if len(all_pkeys) > 1 else all_pkeys[0]
-                with st.expander(f"🔍 Detailed Program Breakdown ({range_label})", expanded=True):
-                    for pkey in all_pkeys:
-                        pdet = ext.programs.get(pkey)
-                        if not pdet:
-                            continue
+                if ext.conclusion:
+                    with st.expander("📝 Extracted Lab Conclusion", expanded=False):
+                        st.write(ext.conclusion)
 
-                        pages_info = f"(Pages: {', '.join(map(str, pdet.source_pages))})" if pdet.source_pages else ""
-                        title = f"**{pkey}** — {'🟢 Detected ' + pages_info if pdet.status == 'detected' else '⚪ Not Detected'}"
+                # Detailed Report Entry Cards
+                with st.expander(f"🔍 Detailed Report Breakdown ({len(report_entries)} Documented Programs)", expanded=False):
+                    for entry in report_entries:
+                        pages_info = f"(Pages: {', '.join(map(str, entry.source_pages))})" if entry.source_pages else ""
+                        title = f"**{entry.report_program_id}**: {entry.program_title} {pages_info}"
+                        with st.expander(title, expanded=False):
+                            st.write("**Problem Understanding:**")
+                            st.write(entry.problem_understanding or "_Not provided (null)_")
 
-                        with st.expander(title, expanded=(pdet.status == "detected")):
-                            if pdet.status == "detected":
-                                st.write("**Problem Understanding:**")
-                                st.write(pdet.problem_understanding or "_Not provided (null)_")
+                            st.write("**Logic / Approach Used:**")
+                            st.write(entry.logic_approach or "_Not provided (null)_")
 
-                                st.write("**Logic / Approach Used:**")
-                                st.write(pdet.logic_approach or "_Not provided (null)_")
-
-                                st.write("**Important Variables:**")
-                                if pdet.important_variables:
-                                    var_data = [{"Variable": v.variable, "Purpose": v.purpose} for v in pdet.important_variables]
-                                    st.table(var_data)
-                                else:
-                                    st.write("_None listed (empty)_")
-
-                                st.write("**What I Observed:**")
-                                st.write(pdet.what_i_observed or "_Not provided (null)_")
+                            st.write("**Important Variables:**")
+                            if entry.important_variables:
+                                var_data = [{"Variable": v.variable, "Purpose": v.purpose} for v in entry.important_variables]
+                                st.table(var_data)
                             else:
-                                st.info(f"Program {pkey} was not detected in the report OCR text. All fields set to null.")
+                                st.write("_None listed (empty)_")
 
-                # JSON Viewer and Download
-                st.subheader("📥 Export Canonical JSON")
-                json_str = report.model_dump_json(indent=2)
-                st.download_button(
-                    label=f"📥 Download {report.student_id}.json",
-                    data=json_str,
-                    file_name=f"{report.student_id}.json",
-                    mime="application/json",
-                    use_container_width=True
-                )
+                            st.write("**What I Observed:**")
+                            st.write(entry.what_i_observed or "_Not provided (null)_")
 
-                with st.expander("📄 View Canonical JSON Payload"):
+                with st.expander("📄 View & Download Canonical JSON"):
+                    json_str = report.model_dump_json(indent=2)
+                    st.download_button(
+                        label=f"📥 Download {report.student_id}.json",
+                        data=json_str,
+                        file_name=f"{report.student_id}.json",
+                        mime="application/json",
+                        use_container_width=True
+                    )
                     st.code(json_str, language="json")
 
-            # STEP 6: EVALUATION & INSTRUCTION MANUAL RUBRIC VERIFICATION
+            # STEP 6: UPLOAD STUDENT CODE FILES (ALL 17 FILES)
             st.divider()
-            st.subheader("🧪 Step 6: Evaluate Report with Instruction Manual & Rubric")
+            st.subheader("💻 Step 6: Ingest Student Source Code Files")
             st.caption(
-                "Strictly verifies the student's report against the official Instruction Manual submission guide "
-                "and compares coverage against the assigned lab questions configured at the top."
+                "Supply ALL student code files (e.g. all 17 programs for the lab session). "
+                "The evaluator will perform static analysis across all files (NO execution, NO testcase pass claims)."
             )
 
-            assigned_q_val = st.session_state.get("assigned_questions", "").strip()
-            if assigned_q_val:
-                st.info("📋 **Assigned Questions Active:** Qwen will verify report coverage against the assigned questions configured at the top.")
-            else:
-                st.warning("⚠️ No assigned questions specified at the top. Qwen will evaluate using general rubric criteria only.")
-
-            with st.expander("📝 Review / Quick-Edit Assigned Questions for this Evaluation", expanded=False):
-                step6_assigned_val = st.text_area(
-                    "Assigned Lab Questions / Problem Statements:",
-                    value=st.session_state.get("assigned_questions", DEFAULT_MANUAL_QUESTIONS_PRESET),
-                    height=120,
-                    help="Modify here if you wish to override the questions configured at the top for this evaluation.",
-                    key="step6_assigned_questions"
+            c_code1, c_code2 = st.columns([3, 2])
+            with c_code1:
+                uploaded_code_files = st.file_uploader(
+                    "Upload Code Files (.c, .cpp, .py, .json, .zip)",
+                    type=["c", "cpp", "py", "json", "zip", "txt"],
+                    accept_multiple_files=True,
+                    key="student_code_files_uploader"
                 )
-                if step6_assigned_val != st.session_state.get("assigned_questions"):
-                    st.session_state["assigned_questions"] = step6_assigned_val
-
-            # STRICT SOURCE SEPARATION: Evaluation source is strictly Student OCR Text extracted from uploaded report
-            raw_ocr = st.session_state.get("ocr_text", "").strip()
-            student_ocr_source = st.session_state.get("edited_text", "").strip() or raw_ocr
-
-            parsed_assigned = parse_assigned_questions(st.session_state.get("assigned_questions", ""))
-            manual_text_val = st.session_state.get("instruction_manual", "")
-
-            # Sanitize and isolate student OCR
-            evaluation_source = sanitize_student_ocr_text(
-                raw_text=student_ocr_source,
-                filename=uploaded_file.name,
-                assigned_count=len(parsed_assigned),
-                manual_char_count=len(manual_text_val),
-                debug=True
-            )
-
-            st.success("📄 **Evaluation Source:** Strictly isolated Student OCR Text extracted from uploaded report.")
-
-            with st.expander("🔍 [INPUT DEBUG] Source Separation Verification", expanded=False):
-                st.write(f"**PDF Filename:** `{uploaded_file.name}`")
-                st.write(f"**OCR Character Count:** `{len(raw_ocr)}`")
-                st.write(f"**Evaluation Source Character Count:** `{len(evaluation_source)}`")
-                st.write(f"**Assigned Questions Count:** `{len(parsed_assigned)}`")
-                st.write(f"**Instruction Manual Character Count:** `{len(manual_text_val)}`")
-                st.text_area("OCR First 500 Characters", value=raw_ocr[:500], height=90, disabled=True)
-                st.text_area("OCR Last 500 Characters", value=raw_ocr[-500:], height=90, disabled=True)
-
-            c_btn1, c_btn2 = st.columns([2, 1])
-            with c_btn1:
-                verify_clicked = st.button(
-                    "🚀 Evaluate Report Against Assigned Questions & Rubric",
-                    type="primary",
-                    use_container_width=True,
-                    key="btn_run_standalone_verifier"
-                )
-            with c_btn2:
-                if st.session_state.get("verification_result"):
-                    if st.button("🔄 Clear Evaluation Result", use_container_width=True):
-                        st.session_state["verification_result"] = ""
+            with c_code2:
+                st.markdown("**Quick Preset (Sample Student Submission):**")
+                if st.button("📂 Load Week 4 Code (17 Files from student_N241003_week_04.json)", use_container_width=True):
+                    sample_json_path = os.path.join(os.path.dirname(__file__), "student_N241003_week_04.json")
+                    if os.path.exists(sample_json_path):
+                        with open(sample_json_path, "r", encoding="utf-8") as f:
+                            sample_data = json.load(f)
+                        st.session_state["student_code_collection"] = ingest_student_code_from_json_or_files(sample_data)
+                        st.success(f"✓ Loaded {len(st.session_state['student_code_collection'].problems)} code files for N241003!")
                         st.rerun()
 
-            if verify_clicked:
-                if not ollama_status["ok"]:
-                    st.error(f"Cannot connect to Ollama at {ollama_url}. Please ensure Ollama is running.")
-                elif not evaluation_source:
-                    st.warning("Cannot evaluate empty report text.")
+            if uploaded_code_files:
+                # Handle single JSON file or multiple code files
+                if len(uploaded_code_files) == 1 and uploaded_code_files[0].name.lower().endswith(".json"):
+                    content_str = uploaded_code_files[0].getvalue().decode("utf-8", errors="replace")
+                    st.session_state["student_code_collection"] = ingest_student_code_from_json_or_files(content_str)
                 else:
-                    # Strict source separation assertions
-                    assert "## 📊 Final Score" not in evaluation_source, "Generated final score markdown must not be in evaluation source"
-                    assert "# 📊 Laboratory Observation Report" not in evaluation_source, "Generated report markdown must not be in evaluation source"
-                    assert "def add(" not in evaluation_source, "Evaluator python test code must not be in evaluation source"
-                    assert "def subtract(" not in evaluation_source, "Evaluator python test code must not be in evaluation source"
-                    assert "def multiply(" not in evaluation_source, "Evaluator python test code must not be in evaluation source"
-                    assert "test_cases =" not in evaluation_source, "Test cases must not be in evaluation source"
-                    assert "Expected qualitative behavior" not in evaluation_source, "Expected qualitative behavior must not be in evaluation source"
+                    st.session_state["student_code_collection"] = ingest_student_code_from_json_or_files(uploaded_code_files)
 
-                    eval_container = st.empty()
-                    with st.spinner("Auditing report evidence against assigned questions and Instruction Manual rubric..."):
-                        eval_result = evaluate_observation_report(
-                            report_text=evaluation_source,
-                            assigned_questions=st.session_state.get("assigned_questions", "").strip(),
-                            instruction_manual=st.session_state.get("instruction_manual", "").strip(),
-                            base_url=ollama_url,
-                            model=selected_model,
-                            temperature=temperature,
-                            filename=uploaded_file.name
-                        )
-                        final_eval = render_verification_markdown(eval_result)
-                        eval_container.markdown(final_eval)
-                        st.session_state["verification_result"] = final_eval
+            code_coll: Optional[StudentCodeCollection] = st.session_state.get("student_code_collection")
+            if code_coll and code_coll.problems:
+                st.success(f"✓ **{len(code_coll.problems)} Code Files Active** for Student `{code_coll.student_id or 'Unknown'}` ({code_coll.week or 'week-04'}).")
 
-            if st.session_state.get("verification_result") and not verify_clicked:
-                st.markdown(st.session_state["verification_result"])
+                # Code Inspector
+                with st.expander(f"🔍 Static Code Inspector ({len(code_coll.problems)} Files)", expanded=False):
+                    file_options = [f"{p.problem_id}: {p.problem_title} ({p.source_file or 'file'})" for p in code_coll.problems]
+                    selected_file_idx = st.selectbox("Select file to inspect:", range(len(file_options)), format_func=lambda i: file_options[i])
+                    sel_p = code_coll.problems[selected_file_idx]
 
-            if st.session_state.get("verification_result"):
-                eval_filename = f"{os.path.splitext(uploaded_file.name)[0]}_evaluation.md"
+                    col_ci1, col_ci2 = st.columns([3, 1])
+                    with col_ci1:
+                        st.code(sel_p.source_code, language="c")
+                    with col_ci2:
+                        st.write(f"**Problem:** `{sel_p.problem_id}`")
+                        st.write(f"**Filename:** `{sel_p.source_file}`")
+                        st.write(f"**Lines:** `{len(sel_p.source_code.splitlines())}`")
+                        st.write(f"**Chars:** `{len(sel_p.source_code)}`")
+            else:
+                st.info("👆 Upload code files or click 'Load Week 4 Code' to provide student code for evaluation.")
+
+            # STEP 7: PROGRAM MATCHING (OBSERVATION REPORT ↔ STUDENT CODE FILES)
+            st.divider()
+            st.subheader("🔗 Step 7: Program Matching (Observation Report ↔ Student Code Files)")
+            st.caption(
+                "Matches each detected report entry (R1, R2...) directly to its corresponding student code file (.c program). "
+                "In laboratory sessions, students are only asked to document a subset of their programs in the report; unselected code files are not penalized."
+            )
+
+            current_report = st.session_state.get("single_student_report")
+            ext_rep = current_report.extraction if current_report else None
+            rep_entries = ext_rep.get_report_entries() if ext_rep else []
+
+            # Compute semantic matches directly between report entries and student code files
+            if rep_entries and code_coll and code_coll.problems:
+                computed_matches = match_report_programs_to_questions(
+                    extracted_report=ext_rep,
+                    question_bank=None,
+                    student_code=code_coll,
+                    matched_threshold=DEFAULT_MATCHED_THRESHOLD,
+                    review_threshold=DEFAULT_REVIEW_THRESHOLD
+                )
+                st.session_state["question_matches"] = computed_matches
+
+            matches: List[QuestionMatch] = st.session_state.get("question_matches", [])
+
+            # Summary Counters
+            matched_count = sum(1 for m in matches if m.match_status == "matched")
+            review_count = sum(1 for m in matches if m.match_status == "needs_review")
+            total_code_q = len(code_coll.problems) if code_coll and code_coll.problems else 0
+
+            sm1, sm2, sm3 = st.columns(3)
+            with sm1:
+                st.metric("Total Submitted Code Files (.c)", total_code_q)
+            with sm2:
+                st.metric("Programs Documented in Report", len(rep_entries))
+            with sm3:
+                st.metric("Programs Successfully Matched", f"{matched_count} / {len(rep_entries)}")
+
+            if matches and code_coll and code_coll.problems:
+                st.markdown("**Program Matching Results & Faculty Review:**")
+                code_options = ["None (Unmatched)"] + [
+                    f"{p.problem_id}: {p.problem_title} ({p.source_file or 'file'})"
+                    for p in code_coll.problems
+                ]
+
+                for m_idx, match in enumerate(matches):
+                    status_color = "🟢" if match.match_status == "matched" else ("🟡" if match.match_status == "needs_review" else "🔴")
+                    with st.expander(f"{status_color} **{match.report_program_id}**: {match.report_program_title or 'Untitled'} ➔ {match.matched_problem_id or 'Unmatched'} (Confidence: {int(match.match_confidence*100)}%)", expanded=(match.match_status != "matched")):
+                        col_m_info, col_m_edit = st.columns([3, 2])
+                        with col_m_info:
+                            st.write(f"**Report Title:** {match.report_program_title}")
+                            st.write(f"**Matched Code Program:** {match.matched_problem_id} — {match.matched_problem_title}")
+                            st.write(f"**Match Status:** `{match.match_status.upper()}` | **Confidence:** `{match.match_confidence:.2f}`")
+                            if match.evidence:
+                                st.caption("Evidence: " + "; ".join(match.evidence))
+                        with col_m_edit:
+                            # Faculty override dropdown mapping to code files
+                            curr_idx = 0
+                            if match.matched_problem_id:
+                                for opt_i, opt_p in enumerate(code_coll.problems):
+                                    if opt_p.problem_id == match.matched_problem_id or f"P{opt_p.problem_number}" == match.matched_problem_id:
+                                        curr_idx = opt_i + 1
+                                        break
+                            curr_idx = min(curr_idx, len(code_options) - 1)
+                            new_sel = st.selectbox(
+                                f"Override Program for {match.report_program_id}:",
+                                options=range(len(code_options)),
+                                index=curr_idx,
+                                format_func=lambda i: code_options[i],
+                                key=f"match_override_{match.report_program_id}_{m_idx}"
+                            )
+                            if new_sel > 0:
+                                chosen_p = code_coll.problems[new_sel - 1]
+                                match.matched_problem_id = chosen_p.problem_id or f"P{chosen_p.problem_number}"
+                                match.matched_problem_title = chosen_p.problem_title or chosen_p.source_file
+                                match.match_status = "matched"
+                            elif new_sel == 0:
+                                match.matched_problem_id = None
+                                match.matched_problem_title = None
+                                match.match_status = "unmatched"
+
+            # STEP 8: UNIFIED 5-DIMENSION HOLISTIC EVALUATION
+            st.divider()
+            st.subheader("🚀 Step 8: Unified 5-Dimension Holistic Evaluation (10 Marks / 100 Marks)")
+            st.caption(
+                "Static reasoning across ALL submitted code files (.c) + Report OCR text. "
+                "Calculates deterministic scores: D1 (2m) + D2 (2m) = 40 Programming, D3 (2m) = 20 Report, "
+                "D4 (2m) = 20 Conceptual, D5 (2m) = 20 Novelty & Presentation Readiness."
+            )
+
+            ready_for_eval = bool(
+                st.session_state.get("single_student_report") and
+                code_coll and code_coll.problems
+            )
+
+            if not ready_for_eval:
+                st.warning("⚠️ Prerequisites for Unified Evaluation: (1) Observation report extracted, (2) Student code files (.c files) loaded.")
+
+            c_hbtn1, c_hbtn2 = st.columns([2, 1])
+            with c_hbtn1:
+                run_holistic_btn = st.button(
+                    "🚀 Run Unified 5-Dimension Holistic Evaluation",
+                    type="primary",
+                    disabled=not ready_for_eval,
+                    use_container_width=True,
+                    key="btn_run_holistic_eval"
+                )
+            with c_hbtn2:
+                if st.session_state.get("holistic_markdown"):
+                    if st.button("🔄 Clear Evaluation", use_container_width=True, key="btn_clear_holistic"):
+                        st.session_state["holistic_markdown"] = ""
+                        st.session_state["holistic_evaluation_result"] = None
+                        st.session_state["evaluation_result"] = None
+                        st.rerun()
+
+            if run_holistic_btn:
+                # Clear previous evaluation to prevent stale state bleed
+                st.session_state["holistic_evaluation_result"] = None
+                st.session_state["evaluation_result"] = None
+                st.session_state["holistic_markdown"] = ""
+                with st.spinner("Conducting Unified 5-Dimension Holistic Static Evaluation..."):
+                    raw_ocr_source = st.session_state.get("edited_text", "") or st.session_state.get("ocr_text", "")
+                    holistic_res = evaluate_holistic_student(
+                        report_text=raw_ocr_source,
+                        extracted_report=ext_rep,
+                        student_code=code_coll,
+                        question_context=None,
+                        matches=st.session_state.get("question_matches", []),
+                        base_url=ollama_url,
+                        model=selected_model,
+                        temperature=temperature
+                    )
+                    st.session_state["holistic_evaluation_result"] = holistic_res
+                    st.session_state["evaluation_result"] = holistic_res
+                    st.session_state["holistic_markdown"] = render_holistic_evaluation_markdown(
+                        holistic_res,
+                        matches=st.session_state.get("question_matches", [])
+                    )
+
+            # RENDER SCORECARD & DETAILED SECTIONS
+            if st.session_state.get("holistic_evaluation_result"):
+                h_res: HolisticEvaluationResult = st.session_state["holistic_evaluation_result"]
+
+                # 1. High-Level Score Cards
+                st.markdown("### 🏆 Evaluation Scoreboard")
+                sc1, sc2, sc3, sc4, sc5 = st.columns(5)
+                with sc1:
+                    st.metric("Programming (D1+D2)", f"{h_res.programming_score_40:.1f} / 40", help="Static code inspection across all files")
+                with sc2:
+                    st.metric("Report (D3)", f"{h_res.report_score_20:.1f} / 20", help="Quality of documented report entries")
+                with sc3:
+                    st.metric("Conceptual (D4)", f"{h_res.conceptual_score_20:.1f} / 20", help="Concept grasp & Code ↔ Report consistency")
+                with sc4:
+                    st.metric("Novelty (D5)", f"{h_res.novelty_score_20:.1f} / 20", help="Algorithmic innovation & Presentation readiness")
+                with sc5:
+                    st.metric("TOTAL SCORE", f"{h_res.total_score_10:.2f} / 10", delta=f"{h_res.total_score_100:.1f} / 100")
+
+                # 2. Five Dimensions Cards
+                st.markdown("#### 📋 5-Dimension Marks Breakdown")
+                d_cols = st.columns(5)
+                for idx, d in enumerate(h_res.dimensions):
+                    with d_cols[idx]:
+                        st.info(f"**{d.dimension}**\n\n### {d.score:.2f} / 2.0\n\n*{d.name}*")
+
+                # 3. Dedicated Section: D5 Interesting Logic & Innovation
+                st.markdown("### ⭐ Interesting Logic & Innovation (D5 Highlights)")
+                if h_res.interesting_logic:
+                    for item in h_res.interesting_logic:
+                        with st.expander(f"✨ Problem {item.problem} — {item.title} (Presentation Potential: {item.presentation_potential})", expanded=True):
+                            st.write(f"**Interesting Logic:** {item.interesting_logic}")
+                            st.write(f"**Why It Is Interesting:** {item.why_interesting}")
+                            if item.suggested_explanation:
+                                st.write(f"**Suggested 300s Presentation Explanation:** {item.suggested_explanation}")
+                            if item.evidence:
+                                st.code(item.evidence, language="c")
+                else:
+                    st.info("Standard procedural implementation with straightforward logic.")
+
+                # 4. Dedicated Section: D4 Code <-> Report Consistency
+                st.markdown("### 🔗 Code ↔ Report Consistency (D4 Audit)")
+                if h_res.code_report_consistency:
+                    for item in h_res.code_report_consistency:
+                        badge = "🟢 Supported" if item.claim_type == "supported" else ("🟡 Inconsistent" if item.claim_type == "inconsistent" else "🔴 Unsupported")
+                        st.markdown(f"- **{item.problem} ({item.report_program_id}):** {badge} — *Claim:* \"{item.report_claim}\" | *Code Reality:* {item.code_reality} | *Assessment:* {item.assessment}")
+                else:
+                    st.caption("No cross-source claims requiring verification were identified.")
+
+                # 5. Dedicated Section: Presentation Readiness (300s Voice Preparation)
+                if h_res.presentation_readiness:
+                    with st.expander("🎙️ Presentation Highlights (300s / 5-min Voice Preparation)", expanded=True):
+                        pr = h_res.presentation_readiness
+                        if pr.interesting_topics:
+                            st.write(f"**Recommended Topics for Presentation:** {', '.join(pr.interesting_topics)}")
+                        if pr.recommended_explanation_points:
+                            st.write("**Key Explanation Points:**")
+                            for pt in pr.recommended_explanation_points:
+                                st.write(f"- {pt}")
+                        if pr.possible_faculty_questions:
+                            st.write("**Anticipated Faculty Q&A Questions:**")
+                            for q in pr.possible_faculty_questions:
+                                st.write(f"- ❓ {q}")
+
+                # 6. Qualitative Feedback & Executive Summary
+                with st.expander("💡 Qualitative Feedback & Recommendations", expanded=False):
+                    st.write("**Demonstrated Strengths:**")
+                    for s in h_res.strengths:
+                        st.write(f"- ✓ {s}")
+                    st.write("**Areas for Improvement:**")
+                    for imp in h_res.improvement_areas:
+                        st.write(f"- ⚠️ {imp}")
+                    if h_res.overall_summary:
+                        st.write(f"**Executive Summary:** {h_res.overall_summary}")
+
+                # 7. Download Markdown Report
+                eval_md = st.session_state.get("holistic_markdown", "")
                 st.download_button(
-                    label="📥 Download Evaluation Report (.md)",
-                    data=st.session_state["verification_result"],
-                    file_name=eval_filename,
+                    label="📥 Download Unified Evaluation Report (.md)",
+                    data=eval_md,
+                    file_name=f"{h_res.student_id or 'student'}_{h_res.week_id or 'week'}_unified_evaluation.md",
                     mime="text/markdown",
                     use_container_width=True,
-                    key="btn_download_eval_report"
+                    key="btn_download_holistic_md"
                 )
+
+
 
 
 # ============================================================
@@ -935,12 +1106,9 @@ with tab_batch:
                 model=selected_model,
                 temperature=temperature,
                 python_exe=get_paddle_python(),
-                assigned_questions=st.session_state.get("assigned_questions", ""),
                 instruction_manual=st.session_state.get("instruction_manual", ""),
                 enable_evaluation=True
             )
-            # Safely set assigned questions & manual for batch pipeline
-            pipeline.assigned_questions = st.session_state.get("assigned_questions", "")
             pipeline.instruction_manual = st.session_state.get("instruction_manual", "")
 
             # Student Extraction Scope Selector
@@ -1191,7 +1359,36 @@ with tab_batch:
                                 st_data = json.load(f)
 
                             eval_text = st_data.get("evaluation")
-                            eval_scores = parse_evaluation_scores(eval_text) if eval_text else {}
+                            holistic_data = st_data.get("holistic_evaluation")
+
+                            if holistic_data and isinstance(holistic_data, dict):
+                                total_10 = holistic_data.get("total_score_10")
+                                total_100 = holistic_data.get("total_score_100")
+                                score_display = f"{total_10:.2f} / 10.0" if total_10 is not None else "—"
+                                if total_100 is not None:
+                                    if total_100 >= 85:
+                                        grade = "A"
+                                    elif total_100 >= 70:
+                                        grade = "B"
+                                    elif total_100 >= 55:
+                                        grade = "C"
+                                    elif total_100 >= 40:
+                                        grade = "D"
+                                    else:
+                                        grade = "F"
+                                else:
+                                    grade = "—"
+                                status_str = "Completed"
+                                m_cnt = holistic_data.get("matched_report_entries_count", 0)
+                                d_cnt = holistic_data.get("detected_report_entries_count", 0)
+                                c_cnt = holistic_data.get("total_code_problems", 0)
+                                q_cov = f"{m_cnt} / {d_cnt} Matched ({c_cnt} Code Files)"
+                            else:
+                                eval_scores = parse_evaluation_scores(eval_text) if eval_text else {}
+                                score_display = eval_scores.get("score_display", "—")
+                                grade = eval_scores.get("grade", "—")
+                                status_str = eval_scores.get("status", "—")
+                                q_cov = eval_scores.get("questions_covered", "—")
 
                             # Summary Banner with Scores & Status
                             st.write(f"**Student ID:** `{inspected_sid}` | **Section:** `{st_data.get('section_id', batch_section_id)}` | **Week:** `{st_data.get('week_id', batch_week_id)}`")
@@ -1202,13 +1399,13 @@ with tab_batch:
                             else:
                                 score_col1, score_col2, score_col3, score_col4 = st.columns(4)
                                 with score_col1:
-                                    score_col1.metric("Total Score", eval_scores.get("score_display", "—"))
+                                    score_col1.metric("Total Score", score_display)
                                 with score_col2:
-                                    score_col2.metric("Grade", eval_scores.get("grade", "—"))
+                                    score_col2.metric("Grade", grade)
                                 with score_col3:
-                                    score_col3.metric("Status / Verdict", eval_scores.get("status", "—"))
+                                    score_col3.metric("Status / Verdict", status_str)
                                 with score_col4:
-                                    score_col4.metric("Questions Addressed", eval_scores.get("questions_covered", "—"))
+                                    score_col4.metric("Questions Addressed", q_cov)
 
                             # Student Details Tabs
                             t_eval, t_extract, t_ocr, t_json = st.tabs([
@@ -1236,25 +1433,47 @@ with tab_batch:
                                 ext_data = st_data.get("extraction", {})
                                 det_progs = ext_data.get("detected_programs", [])
                                 miss_progs = ext_data.get("missing_programs", [])
-                                st.success(f"**Detected Programs ({len(det_progs)}):** {', '.join(det_progs) or 'None'}")
-                                if miss_progs:
-                                    st.caption(f"**Missing Programs:** {', '.join(miss_progs)}")
+                                det_labels = [_format_program_badge(p) for p in det_progs]
+                                miss_labels = [_format_program_badge(p) for p in miss_progs]
+                                st.success(f"**Detected Programs ({len(det_progs)}):** {', '.join(det_labels) or 'None'}")
+                                if miss_labels:
+                                    st.caption(f"**Missing Programs:** {', '.join(miss_labels)}")
                                 
                                 progs_dict = ext_data.get("programs", {})
-                                for p_code, p_info in progs_dict.items():
-                                    with st.expander(f"📌 Program {p_code} Details", expanded=False):
-                                        st.markdown(f"**Problem Understanding:** {p_info.get('problem_understanding') or 'Not provided'}")
-                                        st.markdown(f"**Logic / Approach:** {p_info.get('logic_approach') or 'Not provided'}")
-                                        v_list = p_info.get("important_variables", [])
-                                        if v_list:
-                                            st.markdown("**Important Variables:**")
-                                            var_df = []
-                                            for v in v_list:
-                                                vname = v.get("variable", "") if isinstance(v, dict) else getattr(v, "variable", str(v))
-                                                vpurp = v.get("purpose", "") if isinstance(v, dict) else getattr(v, "purpose", "")
-                                                var_df.append({"Variable": vname, "Purpose": vpurp})
-                                            st.dataframe(var_df, use_container_width=True)
-                                        st.markdown(f"**What I Observed:** {p_info.get('what_i_observed') or 'Not provided'}")
+                                if progs_dict:
+                                    for p_code, p_info in progs_dict.items():
+                                        with st.expander(f"📌 Program {p_code} Details", expanded=False):
+                                            st.markdown(f"**Problem Understanding:** {p_info.get('problem_understanding') or 'Not provided'}")
+                                            st.markdown(f"**Logic / Approach:** {p_info.get('logic_approach') or 'Not provided'}")
+                                            v_list = p_info.get("important_variables", [])
+                                            if v_list:
+                                                st.markdown("**Important Variables:**")
+                                                var_df = []
+                                                for v in v_list:
+                                                    vname = v.get("variable", "") if isinstance(v, dict) else getattr(v, "variable", str(v))
+                                                    vpurp = v.get("purpose", "") if isinstance(v, dict) else getattr(v, "purpose", "")
+                                                    var_df.append({"Variable": vname, "Purpose": vpurp})
+                                                st.dataframe(var_df, use_container_width=True)
+                                            st.markdown(f"**What I Observed:** {p_info.get('what_i_observed') or 'Not provided'}")
+                                elif det_progs and isinstance(det_progs[0], (dict, object)):
+                                    for p_info in det_progs:
+                                        p_dict = p_info.model_dump() if hasattr(p_info, "model_dump") else (p_info if isinstance(p_info, dict) else {})
+                                        p_code = p_dict.get("report_program_id") or p_dict.get("program_id") or "Report Entry"
+                                        p_title = p_dict.get("program_title", "")
+                                        header = f"📌 {p_code}: {p_title}" if p_title else f"📌 {p_code} Details"
+                                        with st.expander(header, expanded=False):
+                                            st.markdown(f"**Problem Understanding:** {p_dict.get('problem_understanding') or 'Not provided'}")
+                                            st.markdown(f"**Logic / Approach:** {p_dict.get('logic_approach') or 'Not provided'}")
+                                            v_list = p_dict.get("important_variables", [])
+                                            if v_list:
+                                                st.markdown("**Important Variables:**")
+                                                var_df = []
+                                                for v in v_list:
+                                                    vname = v.get("variable", "") if isinstance(v, dict) else getattr(v, "variable", str(v))
+                                                    vpurp = v.get("purpose", "") if isinstance(v, dict) else getattr(v, "purpose", "")
+                                                    var_df.append({"Variable": vname, "Purpose": vpurp})
+                                                st.dataframe(var_df, use_container_width=True)
+                                            st.markdown(f"**What I Observed:** {p_dict.get('what_i_observed') or 'Not provided'}")
 
                             with t_ocr:
                                 ocr_data = st_data.get("ocr", {})
@@ -1320,7 +1539,8 @@ with tab_batch:
                                 total_scores_list.append(e_sc["total_score"])
                             
                             det_p = s_data.get("extraction", {}).get("detected_programs", [])
-                            det_p_str = f"{len(det_p)} ({', '.join(det_p[:6])}{'...' if len(det_p) > 6 else ''})" if det_p else "—"
+                            det_labels = [_format_program_badge(p) for p in det_p]
+                            det_p_str = f"{len(det_p)} ({', '.join(det_labels[:6])}{'...' if len(det_p) > 6 else ''})" if det_p else "—"
 
                             score_table_rows.append({
                                 "Student ID": sid,

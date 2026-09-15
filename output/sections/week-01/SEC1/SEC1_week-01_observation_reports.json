@@ -37,6 +37,22 @@
       "extraction": {
         "status": "success",
         "objective_of_lab": "To learn basic programming using input, output, operators and conditional statements.",
+        "conclusion": null,
+        "detected_programs": [
+          "P1",
+          "P2",
+          "P3",
+          "P4",
+          "P5",
+          "P6",
+          "P7",
+          "P8",
+          "P9",
+          "P10",
+          "P11",
+          "P12",
+          "P13"
+        ],
         "programs": {
           "P1": {
             "status": "detected",
@@ -290,21 +306,6 @@
             "what_i_observed": "All programs were compiled and executed successfully without any errors. The output methods matched the expected results."
           }
         },
-        "detected_programs": [
-          "P1",
-          "P2",
-          "P3",
-          "P4",
-          "P5",
-          "P6",
-          "P7",
-          "P8",
-          "P9",
-          "P10",
-          "P11",
-          "P12",
-          "P13"
-        ],
         "missing_programs": [],
         "errors": []
       },
@@ -343,6 +344,22 @@
       "extraction": {
         "status": "success",
         "objective_of_lab": "To learn the fundamental C programming by implementing programs using variables, operators, conditional statements, loops, and switch statement",
+        "conclusion": null,
+        "detected_programs": [
+          "P1",
+          "P2",
+          "P3",
+          "P4",
+          "P5",
+          "P6",
+          "P7",
+          "P8",
+          "P9",
+          "P10",
+          "P11",
+          "P12",
+          "P13"
+        ],
         "programs": {
           "P1": {
             "status": "detected",
@@ -477,21 +494,6 @@
             "what_i_observed": "The program correctly converted a grade point to a letter grade."
           }
         },
-        "detected_programs": [
-          "P1",
-          "P2",
-          "P3",
-          "P4",
-          "P5",
-          "P6",
-          "P7",
-          "P8",
-          "P9",
-          "P10",
-          "P11",
-          "P12",
-          "P13"
-        ],
         "missing_programs": [],
         "errors": []
       },
@@ -530,6 +532,19 @@
       "extraction": {
         "status": "success",
         "objective_of_lab": "To understand and implement the basic concept of c programming using variables, data types, input/output functions, operators, conditional statements, switch statements, and simple problem-solving techniques.",
+        "conclusion": null,
+        "detected_programs": [
+          "P1",
+          "P2",
+          "P3",
+          "P4",
+          "P5",
+          "P6",
+          "P7",
+          "P8",
+          "P9",
+          "P10"
+        ],
         "programs": {
           "P1": {
             "status": "detected",
@@ -632,18 +647,6 @@
             "what_i_observed": "In this level, we look at the understanding of these programs in the Menu program with error handling. Largest among three numbers, Grade point to letter grade."
           }
         },
-        "detected_programs": [
-          "P1",
-          "P2",
-          "P3",
-          "P4",
-          "P5",
-          "P6",
-          "P7",
-          "P8",
-          "P9",
-          "P10"
-        ],
         "missing_programs": [],
         "errors": []
       },
@@ -694,6 +697,22 @@
       "extraction": {
         "status": "success",
         "objective_of_lab": null,
+        "conclusion": null,
+        "detected_programs": [
+          "P1",
+          "P2",
+          "P3",
+          "P4",
+          "P5",
+          "P6",
+          "P7",
+          "P8",
+          "P9",
+          "P10",
+          "P11",
+          "P12",
+          "P13"
+        ],
         "programs": {
           "P1": {
             "status": "detected",
@@ -812,21 +831,6 @@
             "what_i_observed": "The student correctly implemented the logic to convert a grade point to a letter grade."
           }
         },
-        "detected_programs": [
-          "P1",
-          "P2",
-          "P3",
-          "P4",
-          "P5",
-          "P6",
-          "P7",
-          "P8",
-          "P9",
-          "P10",
-          "P11",
-          "P12",
-          "P13"
-        ],
         "missing_programs": [],
         "errors": []
       },
@@ -865,6 +869,22 @@
       "extraction": {
         "status": "success",
         "objective_of_lab": "To learn basic programming using input, output, operators and conditional statements.",
+        "conclusion": null,
+        "detected_programs": [
+          "P1",
+          "P2",
+          "P3",
+          "P4",
+          "P5",
+          "P6",
+          "P7",
+          "P8",
+          "P9",
+          "P10",
+          "P11",
+          "P12",
+          "P13"
+        ],
         "programs": {
           "P1": {
             "status": "detected",
@@ -1109,21 +1129,6 @@
             "what_i_observed": "All programs were compiled and executed successfully without any errors. The output methods matched the expected results."
           }
         },
-        "detected_programs": [
-          "P1",
-          "P2",
-          "P3",
-          "P4",
-          "P5",
-          "P6",
-          "P7",
-          "P8",
-          "P9",
-          "P10",
-          "P11",
-          "P12",
-          "P13"
-        ],
         "missing_programs": [],
         "errors": []
       },
@@ -1132,5 +1137,5 @@
       "created_at": "2026-09-07T09:56:14.248087"
     }
   ],
-  "generated_at": "2026-09-08T20:52:40.523309"
+  "generated_at": "2026-09-13T15:14:03.400789"
 }

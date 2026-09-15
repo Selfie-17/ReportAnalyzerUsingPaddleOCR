@@ -1,0 +1,834 @@
+{
+  "section_id": "SEC2",
+  "week_id": "week-04",
+  "total_students": 1,
+  "successful": 1,
+  "failed": 0,
+  "pending": 0,
+  "students": [
+    {
+      "student_id": "N241003",
+      "section_id": "SEC2",
+      "week_id": "week-04",
+      "status": "completed",
+      "source": {
+        "filename": "observation_report.pdf",
+        "num_pages": 4
+      },
+      "ocr": {
+        "status": "success",
+        "text": "<!-- Page 1 -->\n\nObjective 1\n\nThe objective of this laboratory exercise is to understand and practice functions, user-defined functions, strings, different types of function operations and recursion in programming. the programs help in developing the ability to divide a problem into smaller functions, reuse functions, process strings, and solve problems using recursive logic.\n\nProgram: Find Length of a String Without using strlen\n\nProblem Understanding:\n\nThe program accepts a string and calculates the number of characters present in it without using the predefined `string` function.\n\nLogic Used:\n\nThe program starts from the first character of the string and moves through each character until the null character '0' is reached. A counter is increased for every character. The final counter value represents the length of the string.\n\nImportant variables and their purpose:\n\nVariable purpose\n\nst stores the input string\n\ni Traverses the character\n\nof the string\n\nlength stores the number of characters.\n\n---\n\n<!-- Page 2 -->\n\nWhat D observed:\n\nI observed that a C string ends with the null character '0'. Therefore, the length can be calculated by counting character until this character is encountered.\n\nProgram: Find Factorial Using Recursion.\n\nProblem Understanding\n\nThe program accepts a positive integer and calculates its factorial using a recursive function. For example:\n\n51=5\\times4\\times3\\times2\\times1=120\n\nlogic used:\n\nThe recursive function multiplies the current number by the factorial of the previous number. The recursion continues until the base condition is reached. The returned values are then multiplied to obtain the factorial.\n\nImportant variables and their purpose:\n\nVariable Purpose\n\nn stores the input number\n\nfact stores/returns the factorial result\n\n## what I used:\n\nI observed that each recursive call reduces the value of n until the base condition is reached. After that, the function call returns one by one and produce the final factorial.\n\n---\n\n<!-- Page 3 -->\n\nProgram: Print Armstrong number  $ \\underline{\\text{within}} $ a range using a  $ \\underline{\\text{Function}} $:\n\nProblem Understanding:\n\nThe program accepts a range of numbers and identifies the Armstrong numbers present within that range. The checking operation is performed using a function with arguments and a return type.\n\nLogic Used:\n\nEach number in the given range is passed to the function. The digits of the number are extracted and processed to calculate the required Armstrong value. The calculated value is compared with the original number. If they are equal, the number is printed as an Armstrong number.\n\nImport Variables and their Purpose\n\nVariable Purpose\n\nstart stores the starting value\n\nend storage the ending value\n\nn stores the current number\n\ndigit  storo an extracted digit  sum  stores the calculated value.\n\n## what observed\n\nI observed that the function can be called repeatedly for every number in the given range making the Armstrong-checking logic reusable.\n\n---\n\n<!-- Page 4 -->\n\nProgram: Pind Frequency of each character In a string Problem Understanding:\n\nThe program accepts a string and determines how many times each character occurs in it.\n\nLogic Used:\n\nEach character in the string is selected and compared with the remaining characters. A counter is increased whenever the same character is found. The final counter represents the frequency of that characters.\n\nImportant Variables and their Purposes\n\nVariable Purpose\n\nstr stores the input string\n\nSelects a character\n\nj Compares the selected character\n\nwith other characters.\n\nfreq storage the frequency of the\n\ncharacter\n\nWhat D observed\n\nI observed that nested loops can be used to compare every character with the other characters and long flag count how many times it occur.\n\n## Conclusion:\n\nThrough this lab exercise, I understood how functions can divide a program into reusable parts and how recursion solves a problem through repeated function calls. I also practiced string operations such as palindrome checking, finding string length, reversing strings, sorting strings, character frequency, the exercise helped me understand how functions and recursion can be applied to different programming problems.",
+        "num_pages": 4,
+        "page_breakdown": [
+          {
+            "page": 1,
+            "text": "Objective 1\n\nThe objective of this laboratory exercise is to understand and practice functions, user-defined functions, strings, different types of function operations and recursion in programming. the programs help in developing the ability to divide a problem into smaller functions, reuse functions, process strings, and solve problems using recursive logic.\n\nProgram: Find Length of a String Without using strlen\n\nProblem Understanding:\n\nThe program accepts a string and calculates the number of characters present in it without using the predefined `string` function.\n\nLogic Used:\n\nThe program starts from the first character of the string and moves through each character until the null character '0' is reached. A counter is increased for every character. The final counter value represents the length of the string.\n\nImportant variables and their purpose:\n\nVariable purpose\n\nst stores the input string\n\ni Traverses the character\n\nof the string\n\nlength stores the number of characters."
+          },
+          {
+            "page": 2,
+            "text": "What D observed:\n\nI observed that a C string ends with the null character '0'. Therefore, the length can be calculated by counting character until this character is encountered.\n\nProgram: Find Factorial Using Recursion.\n\nProblem Understanding\n\nThe program accepts a positive integer and calculates its factorial using a recursive function. For example:\n\n51=5\\times4\\times3\\times2\\times1=120\n\nlogic used:\n\nThe recursive function multiplies the current number by the factorial of the previous number. The recursion continues until the base condition is reached. The returned values are then multiplied to obtain the factorial.\n\nImportant variables and their purpose:\n\nVariable Purpose\n\nn stores the input number\n\nfact stores/returns the factorial result\n\n## what I used:\n\nI observed that each recursive call reduces the value of n until the base condition is reached. After that, the function call returns one by one and produce the final factorial."
+          },
+          {
+            "page": 3,
+            "text": "Program: Print Armstrong number  $ \\underline{\\text{within}} $ a range using a  $ \\underline{\\text{Function}} $:\n\nProblem Understanding:\n\nThe program accepts a range of numbers and identifies the Armstrong numbers present within that range. The checking operation is performed using a function with arguments and a return type.\n\nLogic Used:\n\nEach number in the given range is passed to the function. The digits of the number are extracted and processed to calculate the required Armstrong value. The calculated value is compared with the original number. If they are equal, the number is printed as an Armstrong number.\n\nImport Variables and their Purpose\n\nVariable Purpose\n\nstart stores the starting value\n\nend storage the ending value\n\nn stores the current number\n\ndigit  storo an extracted digit  sum  stores the calculated value.\n\n## what observed\n\nI observed that the function can be called repeatedly for every number in the given range making the Armstrong-checking logic reusable."
+          },
+          {
+            "page": 4,
+            "text": "Program: Pind Frequency of each character In a string Problem Understanding:\n\nThe program accepts a string and determines how many times each character occurs in it.\n\nLogic Used:\n\nEach character in the string is selected and compared with the remaining characters. A counter is increased whenever the same character is found. The final counter represents the frequency of that characters.\n\nImportant Variables and their Purposes\n\nVariable Purpose\n\nstr stores the input string\n\nSelects a character\n\nj Compares the selected character\n\nwith other characters.\n\nfreq storage the frequency of the\n\ncharacter\n\nWhat D observed\n\nI observed that nested loops can be used to compare every character with the other characters and long flag count how many times it occur.\n\n## Conclusion:\n\nThrough this lab exercise, I understood how functions can divide a program into reusable parts and how recursion solves a problem through repeated function calls. I also practiced string operations such as palindrome checking, finding string length, reversing strings, sorting strings, character frequency, the exercise helped me understand how functions and recursion can be applied to different programming problems."
+          }
+        ],
+        "device": "gpu:0",
+        "paddle_version": "3.3.0",
+        "total_time": 253.90647400001762,
+        "error": null
+      },
+      "extraction": {
+        "status": "success",
+        "objective_of_lab": "The objective of this laboratory exercise is to understand and practice functions, user-defined functions, strings, different types of function operations and recursion in programming. the programs help in developing the ability to divide a problem into smaller functions, reuse functions, process strings, and solve problems using recursive logic.",
+        "conclusion": "Through this lab exercise, I understood how functions can divide a program into reusable parts and how recursion solves a problem through repeated function calls. I also practiced string operations such as palindrome checking, finding string length, reversing strings, sorting strings, character frequency, the exercise helped me understand how functions and recursion can be applied to different programming problems.",
+        "detected_programs": [
+          {
+            "report_program_id": "R1",
+            "student_written_program_number": null,
+            "program_title": "Find Length of a String Without using strlen",
+            "status": "detected",
+            "problem_understanding": "The program accepts a string and calculates the number of characters present in it without using the predefined `string` function.",
+            "logic_approach": "The program starts from the first character of the string and moves through each character until the null character '0' is reached. A counter is increased for every character. The final counter value represents the length of the string.",
+            "important_variables": [
+              {
+                "variable": "st",
+                "purpose": "stores the input string"
+              },
+              {
+                "variable": "i",
+                "purpose": "traverses the character of the string"
+              },
+              {
+                "variable": "length",
+                "purpose": "stores the number of characters."
+              }
+            ],
+            "what_i_observed": "I observed that a C string ends with the null character '0'. Therefore, the length can be calculated by counting character until this character is encountered.",
+            "source_pages": [
+              1,
+              2,
+              4
+            ],
+            "matched_problem_id": null,
+            "matched_source_file": null,
+            "match_confidence": null,
+            "match_status": null
+          },
+          {
+            "report_program_id": "R2",
+            "student_written_program_number": null,
+            "program_title": "Find Factorial Using Recursion.",
+            "status": "detected",
+            "problem_understanding": "The program accepts a positive integer and calculates its factorial using a recursive function. For example:\n\n5! = 5 × 4 × 3 × 2 × 1 = 120",
+            "logic_approach": "The recursive function multiplies the current number by the factorial of the previous number. The recursion continues until the base condition is reached. The returned values are then multiplied to obtain the factorial.",
+            "important_variables": [
+              {
+                "variable": "n",
+                "purpose": "stores the input number"
+              },
+              {
+                "variable": "fact",
+                "purpose": "stores/returns the factorial result"
+              }
+            ],
+            "what_i_observed": "I observed that each recursive call reduces the value of n until the base condition is reached. After that, the function call returns one by one and produce the final factorial.",
+            "source_pages": [
+              2
+            ],
+            "matched_problem_id": null,
+            "matched_source_file": null,
+            "match_confidence": null,
+            "match_status": null
+          },
+          {
+            "report_program_id": "R3",
+            "student_written_program_number": null,
+            "program_title": "Print Armstrong number within a range using a Function:",
+            "status": "detected",
+            "problem_understanding": "The program accepts a range of numbers and identifies the Armstrong numbers present within that range. The checking operation is performed using a function with arguments and a return type.",
+            "logic_approach": "Each number in the given range is passed to the function. The digits of the number are extracted and processed to calculate the required Armstrong value. The calculated value is compared with the original number. If they are equal, the number is printed as an Armstrong number.",
+            "important_variables": [
+              {
+                "variable": "start",
+                "purpose": "stores the starting value"
+              },
+              {
+                "variable": "end",
+                "purpose": "stores the ending value"
+              },
+              {
+                "variable": "n",
+                "purpose": "stores the current number"
+              },
+              {
+                "variable": "digit",
+                "purpose": "stores an extracted digit"
+              },
+              {
+                "variable": "sum",
+                "purpose": "stores the calculated value."
+              }
+            ],
+            "what_i_observed": "I observed that the function can be called repeatedly for every number in the given range making the Armstrong-checking logic reusable.",
+            "source_pages": [
+              3
+            ],
+            "matched_problem_id": null,
+            "matched_source_file": null,
+            "match_confidence": null,
+            "match_status": null
+          },
+          {
+            "report_program_id": "R4",
+            "student_written_program_number": null,
+            "program_title": "Pind Frequency of each character In a string",
+            "status": "detected",
+            "problem_understanding": "The program accepts a string and determines how many times each character occurs in it.",
+            "logic_approach": "Each character in the string is selected and compared with the remaining characters. A counter is increased whenever the same character is found. The final counter represents the frequency of that characters.",
+            "important_variables": [
+              {
+                "variable": "str",
+                "purpose": "stores the input string"
+              },
+              {
+                "variable": "j",
+                "purpose": "compares the selected character with other characters"
+              },
+              {
+                "variable": "freq",
+                "purpose": "stores the frequency of the character"
+              }
+            ],
+            "what_i_observed": "I observed that nested loops can be used to compare every character with the other characters and long flag count how many times it occur.",
+            "source_pages": [
+              1,
+              4
+            ],
+            "matched_problem_id": null,
+            "matched_source_file": null,
+            "match_confidence": null,
+            "match_status": null
+          }
+        ],
+        "programs": {
+          "P1": {
+            "status": "detected",
+            "source_pages": [
+              1,
+              2,
+              4
+            ],
+            "problem_understanding": "The program accepts a string and calculates the number of characters present in it without using the predefined `string` function.",
+            "logic_approach": "The program starts from the first character of the string and moves through each character until the null character '0' is reached. A counter is increased for every character. The final counter value represents the length of the string.",
+            "important_variables": [
+              {
+                "variable": "st",
+                "purpose": "stores the input string"
+              },
+              {
+                "variable": "i",
+                "purpose": "traverses the character of the string"
+              },
+              {
+                "variable": "length",
+                "purpose": "stores the number of characters."
+              }
+            ],
+            "what_i_observed": "I observed that a C string ends with the null character '0'. Therefore, the length can be calculated by counting character until this character is encountered."
+          },
+          "P2": {
+            "status": "detected",
+            "source_pages": [
+              2
+            ],
+            "problem_understanding": "The program accepts a positive integer and calculates its factorial using a recursive function. For example:\n\n5! = 5 × 4 × 3 × 2 × 1 = 120",
+            "logic_approach": "The recursive function multiplies the current number by the factorial of the previous number. The recursion continues until the base condition is reached. The returned values are then multiplied to obtain the factorial.",
+            "important_variables": [
+              {
+                "variable": "n",
+                "purpose": "stores the input number"
+              },
+              {
+                "variable": "fact",
+                "purpose": "stores/returns the factorial result"
+              }
+            ],
+            "what_i_observed": "I observed that each recursive call reduces the value of n until the base condition is reached. After that, the function call returns one by one and produce the final factorial."
+          },
+          "P3": {
+            "status": "detected",
+            "source_pages": [
+              3
+            ],
+            "problem_understanding": "The program accepts a range of numbers and identifies the Armstrong numbers present within that range. The checking operation is performed using a function with arguments and a return type.",
+            "logic_approach": "Each number in the given range is passed to the function. The digits of the number are extracted and processed to calculate the required Armstrong value. The calculated value is compared with the original number. If they are equal, the number is printed as an Armstrong number.",
+            "important_variables": [
+              {
+                "variable": "start",
+                "purpose": "stores the starting value"
+              },
+              {
+                "variable": "end",
+                "purpose": "stores the ending value"
+              },
+              {
+                "variable": "n",
+                "purpose": "stores the current number"
+              },
+              {
+                "variable": "digit",
+                "purpose": "stores an extracted digit"
+              },
+              {
+                "variable": "sum",
+                "purpose": "stores the calculated value."
+              }
+            ],
+            "what_i_observed": "I observed that the function can be called repeatedly for every number in the given range making the Armstrong-checking logic reusable."
+          },
+          "P4": {
+            "status": "detected",
+            "source_pages": [
+              1,
+              4
+            ],
+            "problem_understanding": "The program accepts a string and determines how many times each character occurs in it.",
+            "logic_approach": "Each character in the string is selected and compared with the remaining characters. A counter is increased whenever the same character is found. The final counter represents the frequency of that characters.",
+            "important_variables": [
+              {
+                "variable": "str",
+                "purpose": "stores the input string"
+              },
+              {
+                "variable": "j",
+                "purpose": "compares the selected character with other characters"
+              },
+              {
+                "variable": "freq",
+                "purpose": "stores the frequency of the character"
+              }
+            ],
+            "what_i_observed": "I observed that nested loops can be used to compare every character with the other characters and long flag count how many times it occur."
+          }
+        },
+        "missing_programs": [],
+        "errors": []
+      },
+      "evaluation": "# Unified Student Evaluation\n\n**Student ID:** `N241003` | **Week:** `week-04`\n\n## 1. Submission Summary\n\n| Metric | Value |\n|---|---:|\n| Code Programs | 17 |\n| Report Entries | 4 |\n| Matched | 4 |\n| Undocumented | 13 |\n\n## 2. Reported Programs\n\n| Report | Code | File | Program | Status |\n|---|---|---|---|---|\n| R1 | P3 | `p3.c` | Find Length of a String Without using strlen | Matched |\n| R2 | P5 | `p5.c` | Find Factorial Using Recursion. | Matched |\n| R3 | P7 | `p7.c` | Print Armstrong number within a range using a Function: | Matched |\n| R4 | P12 | `p12.c` | Pind Frequency of each character In a string | Matched |\n\n## 3. Evaluation\n\n### D1 — Syntax & Code Validity\n\n**Score:** 1.80 / 2\n\n**Assessment**\n\nStatic inspection confirms 15 of 17 submitted source files exhibit clean function declarations, standard library header inclusions, and balanced block scopes without obvious declaration anomalies. Potential declaration/return-statement warnings were identified in 2 file(s).\n\n**Evidence**\n\n- Static inspection indicates 15/17 source files have complete function declarations, standard header inclusions, and balanced block scopes.\n- Declaration/return-statement warnings: `p6_1.c`: Function 'swap' declared with return type 'int' lacks a return statement.; `p6_1.c`: Function 'main' declared with return type 'int' lacks a return statement.; `p6_2.c`: Function 'swap' declared with return type 'int' lacks a return statement.; `p6_2.c`: Function 'main' declared with return type 'int' lacks a return statement.\n- Modular helper function separation statically verified across 11 source file(s).\n\n### D2 — Algorithmic Logic & Functional Correctness\n\n**Score:** 1.80 / 2\n\n**Assessment**\n\nStatic reasoning indicates concrete algorithmic workflows across loops, pointer manipulations, and recursive decompositions.\n\n**Evidence**\n\n- Parameter Passing: `p6_1.c` uses pass-by-value, swapping local parameters without modifying caller variables in main(); `p6_2.c` correctly uses pointer dereferencing (`*x`, `*y`) to modify caller variables across stack frames.\n- Arithmetic & Precision: `p7.c` uses `pow()` from `<math.h>` for integer Armstrong calculation, which operates on `double` floating-point values and introduces potential type conversions in integer comparisons.\n- Recurrence & Recursion Analysis: `p9.c` implements genuine branching tree recursion with multiple distinct recursive branches per frame (`fibonacci(n-1) + fibonacci(n-2)`); `p13.c` implements a doubling recurrence (`f(n-1) + f(n-1)`) with base case `n<=1` returning `1`, evaluating identical subproblems repeatedly rather than forming a Fibonacci recurrence; `p14.c` recursively decomposes integers via `f(n/2)` and `n%2` to calculate binary set bits (Hamming weight); `p15.c` uses twin recursive calls followed by output statements executed during stack unwinding; `p16.c` uses a piecewise modular recursive transformation conditionally branching on `length % 3`.\n- Control Flow & Bounds: `p1.c` bounds prime testing up to `n/2` with early return; `p2.c` tests string palindromes up to `len/2`; `p10.c` implements 2D string sorting using nested loops with `strcmp()` and `strcpy()`.\n\n### D3 — Observation Report Quality & Completeness\n\n**Score:** 1.70 / 2\n\n**Assessment**\n\nThe student documented 4 report entries with clear problem understanding, logic, and observations. Quality levels distinguish complete entries from algorithmic divergence in R4. No penalty applied for undocumented programs.\n\n**Evidence**\n\n- Evaluated strictly on the 4 documented report entries (R1, R2, R3, R4). The 13 undocumented code problems are not penalized under D3.\n- Entries R1, R2, R3 demonstrate thorough problem understanding, step-by-step logic, defined variable tables with specific purposes, and experimental observations.\n- Entry R4 provides clear descriptive structure, but its algorithmic logic description (nested comparison loops) diverges from the submitted source code (direct frequency array).\n\n### D4 — Conceptual Understanding & Code-Report Consistency\n\n**Score:** 1.40 / 2\n\n**Assessment**\n\nDemonstrates solid conceptual grasp across functions and data structures. Identified 1 technical discrepancy between report claims and implementation (R4 / P12 frequency array vs nested loops).\n\n**Evidence**\n\n- Conducted 4 code ↔ report consistency checks between claimed algorithms and source implementations.\n- Identified 1 technical inconsistency: R4 claims nested comparison loops, whereas p12.c implements a 256-element frequency array.\n\n### D5 — Novelty, Innovation & Presentation Readiness\n\n**Score:** 1.70 / 2\n\n**Assessment**\n\nActive static code search identified 9 interesting algorithmic approach(es), including modular recursive implementations.\n\n**Evidence**\n\n- Static inspection across all 17 submitted source files identified 9 notable algorithmic implementation(s).\n- 9 candidates identified; top 4 selected for presentation relevance.\n\n## 4. Code–Report Consistency\n\n| Report | Code | Claim | Code Reality | Status |\n|---|---|---|---|---|\n| R1 | P3 | Calculate string length by traversing characters until '\\0' without using strlen. | `p3.c` manually iterates over string until '\\0' and increments counter. | ✓ Supported |\n| R2 | P5 | Calculate factorial using recursion until base condition. | `p5.c` implements recursive factorial with base condition. | ✓ Supported |\n| R3 | P7 | Check Armstrong numbers across a range using a modular function. | `p7.c` iterates from start to end and calls isarmstrong() for every value. | ✓ Supported |\n| R4 | P12 | Report describes character frequency calculation using comparison/nested-loop logic. | Submitted p12.c actually uses a 256-element frequency array, incrementing freq[(unsigned char)str[i]] rather than nested comparison loops. | ⚠️ Inconsistent |\n\n## 5. Notable Implementations\n\n*9 candidates identified; top 4 selected for presentation relevance.*\n\n### P4\n**File:** `p4.c`\n\n**Interesting Logic:** Implementation utilizes linear recursion via sum(n-1) + n with a single recursive call per stack frame.\n\n**Why it is interesting:** Single-branch linear recursion demonstrates clean stack progression and base-case termination without tree branching.\n\n**Presentation Potential:** MEDIUM\n\n### P5\n**File:** `p5.c`\n\n**Interesting Logic:** Implementation utilizes single-branch linear recursion via factorial(n-1) * n.\n\n**Why it is interesting:** Standard linear recursive state progression with guard against negative inputs.\n\n**Presentation Potential:** MEDIUM\n\n### P6_2\n**File:** `p6_2.c`\n\n**Interesting Logic:** Utilizes pointer dereferencing (*x, *y) for direct memory address swapping across stack frames.\n\n**Why it is interesting:** Demonstrates call-by-reference in C, contrasting directly with pass-by-value parameter copying in local scopes.\n\n**Presentation Potential:** HIGH\n\n### P9\n**File:** `p9.c`\n\n**Interesting Logic:** Implementation utilizes genuine branching binary tree recursion via twin recursive calls fibonacci(n-1) + fibonacci(n-2).\n\n**Why it is interesting:** Demonstrates multi-branch recursion with an exponential call tree, contrasting with linear single-call recursion.\n\n**Presentation Potential:** HIGH\n\n## 6. Presentation Preparation\n\n### Recommended Topics\n\n- Natural Number Summation via Linear Recursion\n- Factorial Decomposition via Linear Recursion\n- Pass-by-Reference Pointer Swapping\n- p9.c via Branching Tree Recursion\n\n### Likely Faculty Questions\n\n1. Why does `p6_1.c` fail to modify caller variables in main(), while `p6_2.c` succeeds using pointer dereferencing?\n2. How does the branching tree recursion in `p9.c` (fibonacci) differ structurally from the doubling recurrence in `p13.c` (f)?\n3. What precision or type conversion issues can arise when using `pow()` from `<math.h>` for integer Armstrong-number calculations in `p7.c`?\n4. Why does `p12.c` use a 256-element frequency array rather than the nested comparison loops described in observation report R4?\n5. In `p14.c`, how does the recursive decomposition `f(n/2) + n%2` compute the number of set bits (binary Hamming weight)?\n\n## 7. Final Score\n\n| Dimension | Score | Weight |\n|---|---:|---:|\n| D1 | 1.80 / 2 | 20 |\n| D2 | 1.80 / 2 | 20 |\n| D3 | 1.70 / 2 | 20 |\n| D4 | 1.40 / 2 | 20 |\n| D5 | 1.70 / 2 | 20 |\n| **Total** | **8.40 / 10** | **100** |\n\n**Final Score:** 84 / 100\n\n## 8. Feedback\n\n### Strengths\n\n- Good separation of algorithmic logic across modular functions.\n- Handwritten observation report provides clear problem understanding, step-by-step logic, and observed behaviors.\n\n### Improvements\n\n- Ensure non-void functions include explicit return statements across all code paths.\n- Align reported algorithmic logic with submitted code implementations (e.g. character frequency calculation).\n\n### Overall Assessment\n\nUnified evaluation of 17 code files and 4 documented report programs. Static analysis confirms sound algorithmic foundations and presentation readiness.\n",
+      "dynamic_evaluation": null,
+      "holistic_evaluation": {
+        "student_id": "N241003",
+        "week_id": "week-04",
+        "week": "week-04",
+        "submission_summary": {
+          "total_code_problems": 17,
+          "detected_report_entries": 4,
+          "matched_report_entries": 4,
+          "review_report_entries": 0,
+          "unmatched_report_entries": 0,
+          "evidence_grounding_rate": 1.0
+        },
+        "dimensions": [
+          {
+            "dimension": "D1",
+            "name": "Syntax & Code Validity",
+            "score": 1.8,
+            "max_score": 2.0,
+            "evidence": [
+              {
+                "source": "code",
+                "problem_id": null,
+                "report_program_id": null,
+                "source_file": null,
+                "content": "Static inspection indicates 15/17 source files have complete function declarations, standard header inclusions, and balanced block scopes."
+              },
+              {
+                "source": "code",
+                "problem_id": null,
+                "report_program_id": null,
+                "source_file": null,
+                "content": "Declaration/return-statement warnings: `p6_1.c`: Function 'swap' declared with return type 'int' lacks a return statement.; `p6_1.c`: Function 'main' declared with return type 'int' lacks a return statement.; `p6_2.c`: Function 'swap' declared with return type 'int' lacks a return statement.; `p6_2.c`: Function 'main' declared with return type 'int' lacks a return statement."
+              },
+              {
+                "source": "code",
+                "problem_id": null,
+                "report_program_id": null,
+                "source_file": null,
+                "content": "Modular helper function separation statically verified across 11 source file(s)."
+              }
+            ],
+            "justification": "Static inspection confirms 15 of 17 submitted source files exhibit clean function declarations, standard library header inclusions, and balanced block scopes without obvious declaration anomalies. Potential declaration/return-statement warnings were identified in 2 file(s).",
+            "confidence": 1.0
+          },
+          {
+            "dimension": "D2",
+            "name": "Algorithmic Logic & Functional Correctness",
+            "score": 1.8,
+            "max_score": 2.0,
+            "evidence": [
+              {
+                "source": "code",
+                "problem_id": null,
+                "report_program_id": null,
+                "source_file": null,
+                "content": "Parameter Passing: `p6_1.c` uses pass-by-value, swapping local parameters without modifying caller variables in main(); `p6_2.c` correctly uses pointer dereferencing (`*x`, `*y`) to modify caller variables across stack frames."
+              },
+              {
+                "source": "code",
+                "problem_id": null,
+                "report_program_id": null,
+                "source_file": null,
+                "content": "Arithmetic & Precision: `p7.c` uses `pow()` from `<math.h>` for integer Armstrong calculation, which operates on `double` floating-point values and introduces potential type conversions in integer comparisons."
+              },
+              {
+                "source": "code",
+                "problem_id": null,
+                "report_program_id": null,
+                "source_file": null,
+                "content": "Recurrence & Recursion Analysis: `p9.c` implements genuine branching tree recursion with multiple distinct recursive branches per frame (`fibonacci(n-1) + fibonacci(n-2)`); `p13.c` implements a doubling recurrence (`f(n-1) + f(n-1)`) with base case `n<=1` returning `1`, evaluating identical subproblems repeatedly rather than forming a Fibonacci recurrence; `p14.c` recursively decomposes integers via `f(n/2)` and `n%2` to calculate binary set bits (Hamming weight); `p15.c` uses twin recursive calls followed by output statements executed during stack unwinding; `p16.c` uses a piecewise modular recursive transformation conditionally branching on `length % 3`."
+              },
+              {
+                "source": "code",
+                "problem_id": null,
+                "report_program_id": null,
+                "source_file": null,
+                "content": "Control Flow & Bounds: `p1.c` bounds prime testing up to `n/2` with early return; `p2.c` tests string palindromes up to `len/2`; `p10.c` implements 2D string sorting using nested loops with `strcmp()` and `strcpy()`."
+              }
+            ],
+            "justification": "Static reasoning indicates concrete algorithmic workflows across loops, pointer manipulations, and recursive decompositions.",
+            "confidence": 1.0
+          },
+          {
+            "dimension": "D3",
+            "name": "Observation Report Quality & Completeness",
+            "score": 1.7,
+            "max_score": 2.0,
+            "evidence": [
+              {
+                "source": "report",
+                "problem_id": null,
+                "report_program_id": "R1",
+                "source_file": null,
+                "content": "Evaluated strictly on the 4 documented report entries (R1, R2, R3, R4). The 13 undocumented code problems are not penalized under D3."
+              },
+              {
+                "source": "report",
+                "problem_id": null,
+                "report_program_id": "R1",
+                "source_file": null,
+                "content": "Entries R1, R2, R3 demonstrate thorough problem understanding, step-by-step logic, defined variable tables with specific purposes, and experimental observations."
+              },
+              {
+                "source": "report",
+                "problem_id": null,
+                "report_program_id": "R1",
+                "source_file": null,
+                "content": "Entry R4 provides clear descriptive structure, but its algorithmic logic description (nested comparison loops) diverges from the submitted source code (direct frequency array)."
+              }
+            ],
+            "justification": "The student documented 4 report entries with clear problem understanding, logic, and observations. Quality levels distinguish complete entries from algorithmic divergence in R4. No penalty applied for undocumented programs.",
+            "confidence": 1.0
+          },
+          {
+            "dimension": "D4",
+            "name": "Conceptual Understanding & Code-Report Consistency",
+            "score": 1.4,
+            "max_score": 2.0,
+            "evidence": [
+              {
+                "source": "cross_source",
+                "problem_id": "Consistency",
+                "report_program_id": null,
+                "source_file": null,
+                "content": "Conducted 4 code ↔ report consistency checks between claimed algorithms and source implementations."
+              },
+              {
+                "source": "cross_source",
+                "problem_id": "P12",
+                "report_program_id": "R4",
+                "source_file": null,
+                "content": "Identified 1 technical inconsistency: R4 claims nested comparison loops, whereas p12.c implements a 256-element frequency array."
+              }
+            ],
+            "justification": "Demonstrates solid conceptual grasp across functions and data structures. Identified 1 technical discrepancy between report claims and implementation (R4 / P12 frequency array vs nested loops).",
+            "confidence": 1.0
+          },
+          {
+            "dimension": "D5",
+            "name": "Novelty, Innovation & Presentation Readiness",
+            "score": 1.7,
+            "max_score": 2.0,
+            "evidence": [
+              {
+                "source": "code",
+                "problem_id": "Novelty",
+                "report_program_id": null,
+                "source_file": null,
+                "content": "Static inspection across all 17 submitted source files identified 9 notable algorithmic implementation(s)."
+              },
+              {
+                "source": "code",
+                "problem_id": "Selection",
+                "report_program_id": null,
+                "source_file": null,
+                "content": "9 candidates identified; top 4 selected for presentation relevance."
+              }
+            ],
+            "justification": "Active static code search identified 9 interesting algorithmic approach(es), including modular recursive implementations.",
+            "confidence": 1.0
+          }
+        ],
+        "total_score_10": 8.4,
+        "total_score_100": 84.0,
+        "programming_score_40": 36.0,
+        "report_score_20": 17.0,
+        "conceptual_score_20": 14.0,
+        "novelty_score_20": 17.0,
+        "interesting_logic": [
+          {
+            "problem": "P4",
+            "problem_id": "P4",
+            "source_file": "p4.c",
+            "title": "Natural Number Summation via Linear Recursion",
+            "interesting_logic": "Implementation utilizes linear recursion via sum(n-1) + n with a single recursive call per stack frame.",
+            "why_interesting": "Single-branch linear recursion demonstrates clean stack progression and base-case termination without tree branching.",
+            "evidence": "#include<stdio.h>\nint sum(int n){\n    if(n==0)\n        return 0;\n    else\n        return n+sum(n-1);\n}\nint main(){\n    int n,result;\n    printf(\"Enter a positive integer: \");\n    s...",
+            "presentation_potential": "MEDIUM",
+            "suggested_explanation": "Explain how the base condition terminates linear recursion and how stack frames unwind."
+          },
+          {
+            "problem": "P5",
+            "problem_id": "P5",
+            "source_file": "p5.c",
+            "title": "Factorial Decomposition via Linear Recursion",
+            "interesting_logic": "Implementation utilizes single-branch linear recursion via factorial(n-1) * n.",
+            "why_interesting": "Standard linear recursive state progression with guard against negative inputs.",
+            "evidence": "#include<stdio.h>\nint factorial(int n)\n{\n    if(n==0)\n    {\n        return 1;\n    }\n    return n*factorial(n-1);\n}\nint main()\n{\n    int n;\n    printf(\"Enter a number: \");\n    scanf...",
+            "presentation_potential": "MEDIUM",
+            "suggested_explanation": "Explain recursive frame accumulation and base-case termination."
+          },
+          {
+            "problem": "P6_2",
+            "problem_id": "P6_2",
+            "source_file": "p6_2.c",
+            "title": "Pass-by-Reference Pointer Swapping",
+            "interesting_logic": "Utilizes pointer dereferencing (*x, *y) for direct memory address swapping across stack frames.",
+            "why_interesting": "Demonstrates call-by-reference in C, contrasting directly with pass-by-value parameter copying in local scopes.",
+            "evidence": "#include<stdio.h>\nint swap(int *x, int *y)\n{\n    int temp=*x;\n    *x=*y;\n    *y=temp;\n    printf(\"inside function x=%d,y=%d\\n\",*x,*y);\n}\nint main()\n{\n    int x,y;\n    printf(\"Enter...",
+            "presentation_potential": "HIGH",
+            "suggested_explanation": "Explain how passing memory addresses allows a helper function to modify caller variables in main()."
+          },
+          {
+            "problem": "P9",
+            "problem_id": "P9",
+            "source_file": "p9.c",
+            "title": "p9.c via Branching Tree Recursion",
+            "interesting_logic": "Implementation utilizes genuine branching binary tree recursion via twin recursive calls fibonacci(n-1) + fibonacci(n-2).",
+            "why_interesting": "Demonstrates multi-branch recursion with an exponential call tree, contrasting with linear single-call recursion.",
+            "evidence": "#include<stdio.h>\nint fibonacci(int n){\n    if(n==0)\n        return 0;\n    else if(n==1)\n        return 1;\n    else\n        return fibonacci(n-1)+fibonacci(n-2);\n}\nint main(){\n    ...",
+            "presentation_potential": "HIGH",
+            "suggested_explanation": "Explain the binary recursion tree branching factor and overlapping subproblems."
+          },
+          {
+            "problem": "P10",
+            "problem_id": "P10",
+            "source_file": "p10.c",
+            "title": "Lexicographical 2D String Sorting",
+            "interesting_logic": "Implements two-dimensional string sorting using strcmp() and strcpy() with nested comparison loops.",
+            "why_interesting": "Demonstrates multi-string array buffer management and standard string library mechanics.",
+            "evidence": "#include<stdio.h>\n#include<string.h>\nint main(){\n    int n,i,j;\n    char str[20][50],temp[50];\n    printf(\"Enter the number of strings: \");\n    scanf(\"%d\",&n);\n    printf(\"Enter th...",
+            "presentation_potential": "MEDIUM",
+            "suggested_explanation": "Explain how string comparison determines lexicographical order and how temporary buffer swapping works."
+          },
+          {
+            "problem": "P13",
+            "problem_id": "P13",
+            "source_file": "p13.c",
+            "title": "Recursive Doubling Recurrence",
+            "interesting_logic": "Recurrence relation f(n-1) + f(n-1) with base case `n<=1` returning `1` evaluates identical subproblems, generating repeated state doubling.",
+            "why_interesting": "Demonstrates repeated doubling recurrence, distinct from Fibonacci multi-branch recurrence.",
+            "evidence": "#include<stdio.h>\nint f(int n){\n    if(n<=1)\n        return 1;\n    return f(n-1)+f(n-1);\n}\nint main(){\n    printf(\"%d\",f(5));\n    return 0;\n}",
+            "presentation_potential": "MEDIUM",
+            "suggested_explanation": "Contrast this doubling recurrence with the Fibonacci recurrence relation."
+          },
+          {
+            "problem": "P14",
+            "problem_id": "P14",
+            "source_file": "p14.c",
+            "title": "Recursive Binary Bit Counting (Hamming Weight)",
+            "interesting_logic": "Recursively processes n/2 and n%2 via f(n/2) + n%2 to compute the binary set bit count.",
+            "why_interesting": "Divide-and-conquer binary decomposition evaluates bitwise weight mathematically through recursive call frames in logarithmic depth.",
+            "evidence": "#include<stdio.h>\nint f(int n){\n    if(n==0)\n        return 0;\n    return f(n/2)+n%2;\n}\nint main(){\n    printf(\"%d\",f(13));\n    return 0;\n}",
+            "presentation_potential": "HIGH",
+            "suggested_explanation": "Explain how n/2 shifts bits rightward while n%2 extracts the least significant bit."
+          },
+          {
+            "problem": "P15",
+            "problem_id": "P15",
+            "source_file": "p15.c",
+            "title": "Divide-and-Conquer Twin Recursion with Post-Unwind Output",
+            "interesting_logic": "Twin recursive calls f(n/2) with print statements executed upon stack unwinding.",
+            "why_interesting": "Demonstrates post-order traversal ordering during call stack frame unwinding.",
+            "evidence": "#include<stdio.h>\nvoid f(int n){\n    if(n<=0)\n        return;\n    f(n/2);\n    f(n/2);\n    printf(\"%d\",n);\n}\nint main(){\n    int n;\n    printf(\"Enter n: \");\n    scanf(\"%d\",&n);\n    ...",
+            "presentation_potential": "MEDIUM",
+            "suggested_explanation": "Trace how execution order prints values after recursive frames unwind."
+          },
+          {
+            "problem": "P16",
+            "problem_id": "P16",
+            "source_file": "p16.c",
+            "title": "p16.c via Branching Tree Recursion",
+            "interesting_logic": "Implementation utilizes genuine branching binary tree recursion via twin recursive calls func(n-1) + func(n-2).",
+            "why_interesting": "Demonstrates multi-branch recursion with an exponential call tree, contrasting with linear single-call recursion.",
+            "evidence": "#include<stdio.h>\nint func(int start, int end)\n{\n    int length = end + 1 - start;\n\n    if ((length < 1) || (start < 0) || (end < 0))\n        return 0;\n\n    if (length % 3 == 0)\n  ...",
+            "presentation_potential": "HIGH",
+            "suggested_explanation": "Explain the binary recursion tree branching factor and overlapping subproblems."
+          }
+        ],
+        "code_report_consistency": [
+          {
+            "problem": "P3",
+            "problem_id": "P3",
+            "report_program_id": "R1",
+            "claim_type": "supported",
+            "report_claim": "Calculate string length by traversing characters until '\\0' without using strlen.",
+            "code_reality": "`p3.c` manually iterates over string until '\\0' and increments counter.",
+            "assessment": "Reported logic is consistent with the code implementation."
+          },
+          {
+            "problem": "P5",
+            "problem_id": "P5",
+            "report_program_id": "R2",
+            "claim_type": "supported",
+            "report_claim": "Calculate factorial using recursion until base condition.",
+            "code_reality": "`p5.c` implements recursive factorial with base condition.",
+            "assessment": "Reported logic is consistent with the code implementation."
+          },
+          {
+            "problem": "P7",
+            "problem_id": "P7",
+            "report_program_id": "R3",
+            "claim_type": "supported",
+            "report_claim": "Check Armstrong numbers across a range using a modular function.",
+            "code_reality": "`p7.c` iterates from start to end and calls isarmstrong() for every value.",
+            "assessment": "Reported logic is consistent with the code implementation."
+          },
+          {
+            "problem": "P12",
+            "problem_id": "P12",
+            "report_program_id": "R4",
+            "claim_type": "inconsistent",
+            "report_claim": "Report describes character frequency calculation using comparison/nested-loop logic.",
+            "code_reality": "Submitted p12.c actually uses a 256-element frequency array, incrementing freq[(unsigned char)str[i]] rather than nested comparison loops.",
+            "assessment": "Inconsistent: High-level objective is correct, but described nested comparison algorithm does not match the frequency array implementation."
+          }
+        ],
+        "presentation_readiness": {
+          "interesting_topics": [
+            "Natural Number Summation via Linear Recursion",
+            "Factorial Decomposition via Linear Recursion",
+            "Pass-by-Reference Pointer Swapping",
+            "p9.c via Branching Tree Recursion"
+          ],
+          "recommended_explanation_points": [
+            "Explain how the base condition terminates linear recursion and how stack frames unwind.",
+            "Explain recursive frame accumulation and base-case termination.",
+            "Explain how passing memory addresses allows a helper function to modify caller variables in main().",
+            "Explain the binary recursion tree branching factor and overlapping subproblems."
+          ],
+          "possible_faculty_questions": [
+            "Why does `p6_1.c` fail to modify caller variables in main(), while `p6_2.c` succeeds using pointer dereferencing?",
+            "How does the branching tree recursion in `p9.c` (fibonacci) differ structurally from the doubling recurrence in `p13.c` (f)?",
+            "What precision or type conversion issues can arise when using `pow()` from `<math.h>` for integer Armstrong-number calculations in `p7.c`?",
+            "Why does `p12.c` use a 256-element frequency array rather than the nested comparison loops described in observation report R4?",
+            "In `p14.c`, how does the recursive decomposition `f(n/2) + n%2` compute the number of set bits (binary Hamming weight)?"
+          ],
+          "strong_areas": [
+            "Modular program organization",
+            "Clear variable naming and purpose in report",
+            "Pointer-based caller mutation"
+          ],
+          "weak_areas": [
+            "Ensure consistent return statements across non-void functions",
+            "Align reported algorithmic logic with submitted code structures"
+          ]
+        },
+        "total_code_problems": 17,
+        "detected_report_entries_count": 4,
+        "matched_report_entries_count": 4,
+        "review_report_entries_count": 0,
+        "unmatched_report_entries_count": 0,
+        "report_entries": [
+          {
+            "report_program_id": "R1",
+            "student_written_program_number": null,
+            "program_title": "Find Length of a String Without using strlen",
+            "status": "detected",
+            "problem_understanding": "The program accepts a string and calculates the number of characters present in it without using the predefined `string` function.",
+            "logic_approach": "The program starts from the first character of the string and moves through each character until the null character '0' is reached. A counter is increased for every character. The final counter value represents the length of the string.",
+            "important_variables": [
+              {
+                "variable": "st",
+                "purpose": "stores the input string"
+              },
+              {
+                "variable": "i",
+                "purpose": "traverses the character of the string"
+              },
+              {
+                "variable": "length",
+                "purpose": "stores the number of characters."
+              }
+            ],
+            "what_i_observed": "I observed that a C string ends with the null character '0'. Therefore, the length can be calculated by counting character until this character is encountered.",
+            "source_pages": [
+              1,
+              2,
+              4
+            ],
+            "matched_problem_id": "P3",
+            "matched_source_file": "p3.c",
+            "match_confidence": 0.97,
+            "match_status": "matched"
+          },
+          {
+            "report_program_id": "R2",
+            "student_written_program_number": null,
+            "program_title": "Find Factorial Using Recursion.",
+            "status": "detected",
+            "problem_understanding": "The program accepts a positive integer and calculates its factorial using a recursive function. For example:\n\n5! = 5 × 4 × 3 × 2 × 1 = 120",
+            "logic_approach": "The recursive function multiplies the current number by the factorial of the previous number. The recursion continues until the base condition is reached. The returned values are then multiplied to obtain the factorial.",
+            "important_variables": [
+              {
+                "variable": "n",
+                "purpose": "stores the input number"
+              },
+              {
+                "variable": "fact",
+                "purpose": "stores/returns the factorial result"
+              }
+            ],
+            "what_i_observed": "I observed that each recursive call reduces the value of n until the base condition is reached. After that, the function call returns one by one and produce the final factorial.",
+            "source_pages": [
+              2
+            ],
+            "matched_problem_id": "P5",
+            "matched_source_file": "p5.c",
+            "match_confidence": 0.91,
+            "match_status": "matched"
+          },
+          {
+            "report_program_id": "R3",
+            "student_written_program_number": null,
+            "program_title": "Print Armstrong number within a range using a Function:",
+            "status": "detected",
+            "problem_understanding": "The program accepts a range of numbers and identifies the Armstrong numbers present within that range. The checking operation is performed using a function with arguments and a return type.",
+            "logic_approach": "Each number in the given range is passed to the function. The digits of the number are extracted and processed to calculate the required Armstrong value. The calculated value is compared with the original number. If they are equal, the number is printed as an Armstrong number.",
+            "important_variables": [
+              {
+                "variable": "start",
+                "purpose": "stores the starting value"
+              },
+              {
+                "variable": "end",
+                "purpose": "stores the ending value"
+              },
+              {
+                "variable": "n",
+                "purpose": "stores the current number"
+              },
+              {
+                "variable": "digit",
+                "purpose": "stores an extracted digit"
+              },
+              {
+                "variable": "sum",
+                "purpose": "stores the calculated value."
+              }
+            ],
+            "what_i_observed": "I observed that the function can be called repeatedly for every number in the given range making the Armstrong-checking logic reusable.",
+            "source_pages": [
+              3
+            ],
+            "matched_problem_id": "P7",
+            "matched_source_file": "p7.c",
+            "match_confidence": 0.92,
+            "match_status": "matched"
+          },
+          {
+            "report_program_id": "R4",
+            "student_written_program_number": null,
+            "program_title": "Pind Frequency of each character In a string",
+            "status": "detected",
+            "problem_understanding": "The program accepts a string and determines how many times each character occurs in it.",
+            "logic_approach": "Each character in the string is selected and compared with the remaining characters. A counter is increased whenever the same character is found. The final counter represents the frequency of that characters.",
+            "important_variables": [
+              {
+                "variable": "str",
+                "purpose": "stores the input string"
+              },
+              {
+                "variable": "j",
+                "purpose": "compares the selected character with other characters"
+              },
+              {
+                "variable": "freq",
+                "purpose": "stores the frequency of the character"
+              }
+            ],
+            "what_i_observed": "I observed that nested loops can be used to compare every character with the other characters and long flag count how many times it occur.",
+            "source_pages": [
+              1,
+              4
+            ],
+            "matched_problem_id": "P12",
+            "matched_source_file": "p12.c",
+            "match_confidence": 1.0,
+            "match_status": "matched"
+          }
+        ],
+        "matches": [
+          {
+            "report_program_id": "R1",
+            "report_program_title": "Find Length of a String Without using strlen",
+            "matched_problem_id": "P3",
+            "matched_problem_title": "p3.c — outputs: Enter a string:  Length of the string=%d\\n",
+            "source_file": "p3.c",
+            "match_status": "matched",
+            "match_confidence": 0.97,
+            "evidence": [
+              "Report title: 'Find Length of a String Without using strlen'",
+              "Question text: 'p3.c — outputs: Enter a string:  Length of the string=%d\\n'",
+              "Matched concepts: string_length"
+            ]
+          },
+          {
+            "report_program_id": "R2",
+            "report_program_title": "Find Factorial Using Recursion.",
+            "matched_problem_id": "P5",
+            "matched_problem_title": "p5.c — functions: factorial — outputs: Enter a number:  Factorial is not defined for negative numbers.\\n Factorial of %d=%d\\n",
+            "source_file": "p5.c",
+            "match_status": "matched",
+            "match_confidence": 0.91,
+            "evidence": [
+              "Report title: 'Find Factorial Using Recursion.'",
+              "Question text: 'p5.c — functions: factorial — outputs: Enter a number:  Factorial is not defined for negative numbers.\\n Factorial of %d=%d\\n'",
+              "Matched concepts: factorial, positive_negative"
+            ]
+          },
+          {
+            "report_program_id": "R3",
+            "report_program_title": "Print Armstrong number within a range using a Function:",
+            "matched_problem_id": "P7",
+            "matched_problem_title": "p7.c — functions: isarmstrong — outputs: Enter the starting range:  Enter a ending number:  Armstrong numbers between %d and %d are:\\n",
+            "source_file": "p7.c",
+            "match_status": "matched",
+            "match_confidence": 0.92,
+            "evidence": [
+              "Report title: 'Print Armstrong number within a range using a Function:'",
+              "Question text: 'p7.c — functions: isarmstrong — outputs: Enter the starting range:  Enter a ending number:  Armstrong numbers between %d and %d are:\\n'",
+              "Matched concepts: armstrong"
+            ]
+          },
+          {
+            "report_program_id": "R4",
+            "report_program_title": "Pind Frequency of each character In a string",
+            "matched_problem_id": "P12",
+            "matched_problem_title": "p12.c — outputs: Enter a string:  \\nFrequency of each character: \\n %d=%d\\n",
+            "source_file": "p12.c",
+            "match_status": "matched",
+            "match_confidence": 1.0,
+            "evidence": [
+              "Report title: 'Pind Frequency of each character In a string'",
+              "Question text: 'p12.c — outputs: Enter a string:  \\nFrequency of each character: \\n %d=%d\\n'",
+              "Matched concepts: character_frequency"
+            ]
+          }
+        ],
+        "evidence_grounding_rate": 100.0,
+        "strengths": [
+          "Good separation of algorithmic logic across modular functions.",
+          "Handwritten observation report provides clear problem understanding, step-by-step logic, and observed behaviors."
+        ],
+        "improvement_areas": [
+          "Ensure non-void functions include explicit return statements across all code paths.",
+          "Align reported algorithmic logic with submitted code implementations (e.g. character frequency calculation)."
+        ],
+        "overall_summary": "Unified evaluation of 17 code files and 4 documented report programs. Static analysis confirms sound algorithmic foundations and presentation readiness.",
+        "evaluation_notes": {
+          "execution_performed": false,
+          "testcases_executed": false,
+          "online_judge_used": false,
+          "execution_claims_allowed": false
+        }
+      },
+      "created_at": "2026-09-13T15:24:59.259157"
+    }
+  ],
+  "generated_at": "2026-09-15T15:23:01.173863"
+}

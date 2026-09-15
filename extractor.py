@@ -8,7 +8,13 @@ import json
 import re
 import requests
 from typing import Dict, Any, Optional, List, Tuple
-from schemas import ExtractionResult, ProgramDetails, VariableItem
+from schemas import (
+    ExtractionResult,
+    ProgramDetails,
+    VariableItem,
+    ReportProgramEntry,
+    ReportExtractionResult,
+)
 
 DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434"
 DEFAULT_MODEL = "qwen2.5-coder:3b"
@@ -17,43 +23,43 @@ EXTRACTION_SYSTEM_PROMPT = """You are an accurate, strictly conservative academi
 Your sole job is to parse the student's laboratory observation report OCR text and extract its structured content into pure JSON.
 
 CRITICAL EXTRACTION RULES (STRICT NON-HALLUCINATION POLICY):
-1. EXTRACT WHAT IS ACTUALLY THERE: Extract only the content present in the OCR text. Do NOT improve, rewrite, infer, summarize with outside knowledge, or invent academic explanations.
-2. MISSING CONTENT MUST BE NULL: If a section (Objective, Problem Understanding, Logic/Approach, What I Observed) is not present or cannot be read, you MUST set its value to null. NEVER invent observations (e.g., do NOT invent "I observed the program executed successfully" if not written).
+1. EXTRACT WHAT IS ACTUALLY THERE: Extract ONLY the content present in the OCR text. Do NOT improve, rewrite, infer, summarize with outside knowledge, or invent academic explanations.
+2. MISSING CONTENT MUST BE NULL: If a section (Objective, Problem Understanding, Logic/Approach, What I Observed, Conclusion) is not present or cannot be read, you MUST set its value to null. NEVER invent observations (e.g. do NOT invent "I observed the program executed successfully" if not written).
 3. VARIABLES: If no variables table or list is present for a program, return an empty array []. Never infer or invent variable names or purposes.
 4. NO GROUPED TEXT DUPLICATION:
-   - If the student's report groups programs into levels or lists (e.g., "Level 1: Even/odd, positive/negative...", "Level 2...", "Level 3..."), do NOT duplicate or copy that level summary into multiple programs.
+   - If the student's report groups programs into levels or lists (e.g. "Level 1: Even/odd, positive/negative...", "Level 2...", "Easy Level...", "Medium Level..."), do NOT duplicate or copy that level summary into multiple programs.
+   - Never treat "Level 1", "Level 2", "Easy Level" as program numbers or program entries.
    - Each program must contain only standalone, program-specific explanation written specifically for that program.
-   - If a program is merely mentioned in a list or grouped title without its own individual explanation, mark it with "status": "not_detected" and set its fields to null.
-5. PROGRAM IDENTIFICATION:
-   - Identify programs from headings like: "P1", "Program 1", "Problem 1", "1.", "1)", "Question 1", etc.
-   - Do NOT treat "Level 1" or "Level 2" as "Program 1" or "Program 2".
-   - Map programs to canonical keys "P1" through "PN".
-   - If a program (e.g. P4) is NOT present in the OCR text, mark it with "status": "not_detected" and null fields.
-   - If a program IS present with its own section, mark it with "status": "detected".
-   - DO NOT fabricate missing programs simply to complete the assigned list.
-6. OBJECTIVE: Extract the single overall lab objective into "objective_of_lab". If missing, set to null.
+   - If a program is merely mentioned in a list or grouped title without its own individual explanation, do NOT create a program entry for it.
+5. REPORT ENTRY IDENTIFICATION (R1, R2, R3...):
+   - Designate each program documented in the report as "R1", "R2", "R3"... where R means "Report Entry".
+   - The first detected report program is R1, the second is R2, etc. Do NOT assume R1 is official P1!
+   - Extract "student_written_program_number": if the student wrote "Program 7: Find Factorial", set "student_written_program_number": "7". If no number was written, set null.
+   - Extract "program_title": the actual student-written program title.
+   - DO NOT create placeholders for unwritten or missing programs. If a student documented only 4 programs, output ONLY 4 items in detected_programs.
+6. REPORT-LEVEL CONTENT:
+   - Extract the overall lab objective into "objective_of_lab" (or null if absent).
+   - Extract the overall lab conclusion into "conclusion" (or null if absent).
+   - Do NOT copy the objective or conclusion into individual program entries.
 
 JSON OUTPUT STRUCTURE SCHEMA:
 {
   "objective_of_lab": "Overall lab objective text or null",
-  "programs": {
-    "P1": {
-      "status": "detected" or "not_detected",
-      "problem_understanding": "extracted text or null",
-      "logic_approach": "extracted text or null",
+  "detected_programs": [
+    {
+      "report_program_id": "R1",
+      "student_written_program_number": null,
+      "program_title": "student-written program title",
+      "status": "detected",
+      "problem_understanding": "extracted student text or null",
+      "logic_approach": "extracted student text or null",
       "important_variables": [
-        {"variable": "var_name", "purpose": "description"}
+        {"variable": "actual variable", "purpose": "actual student-written purpose"}
       ],
-      "what_i_observed": "extracted text or null"
-    },
-    "P2": {
-      "status": "detected" or "not_detected",
-      "problem_understanding": null,
-      "logic_approach": null,
-      "important_variables": [],
-      "what_i_observed": null
+      "what_i_observed": "student-written observation or null"
     }
-  }
+  ],
+  "conclusion": "student-written conclusion or null"
 }
 Output valid JSON only. Do not include markdown commentary or extra keys.
 """
@@ -157,34 +163,33 @@ def assign_source_pages(
     page_breakdown: List[Dict[str, Any]]
 ) -> ExtractionResult:
     """
-    Associates source page numbers to each detected program using ground-truth
+    Associates source page numbers to each detected report program using ground-truth
     OCR page breakdown, ensuring page numbers are never hallucinated by the LLM.
     """
     if not page_breakdown:
         return extraction_result
 
-    for prog_key, prog_detail in extraction_result.programs.items():
-        if prog_detail.status != "detected":
-            prog_detail.source_pages = []
-            continue
-
+    # Process ReportProgramEntry items in detected_programs
+    entries = extraction_result.get_report_entries()
+    for entry in entries:
         matched_pages = set()
-        prog_num = re.sub(r"[^\d]", "", prog_key)
-        # Search patterns for program header
         patterns = [
-            re.compile(rf"\b{re.escape(prog_key)}\b", re.IGNORECASE),
-            re.compile(rf"\bProgram\s*{prog_num}\b", re.IGNORECASE),
-            re.compile(rf"\bProblem\s*{prog_num}\b", re.IGNORECASE),
-            re.compile(rf"\bQuestion\s*{prog_num}\b", re.IGNORECASE),
-            re.compile(rf"(?:^|\n)\s*{prog_num}[\.\)]\s+", re.IGNORECASE),
-            re.compile(rf"Level\s*\d+\s*:\s*(?:Compulsory|Medium|Advanced)?\s*(?:Programs?)?\s*{prog_num}[\.\)]", re.IGNORECASE)
+            re.compile(rf"\b{re.escape(entry.report_program_id)}\b", re.IGNORECASE),
         ]
+        if entry.program_title:
+            patterns.append(re.compile(rf"\b{re.escape(entry.program_title[:30])}\b", re.IGNORECASE))
+        if entry.student_written_program_number:
+            num = entry.student_written_program_number
+            patterns.extend([
+                re.compile(rf"\bProgram\s*{num}\b", re.IGNORECASE),
+                re.compile(rf"\bProblem\s*{num}\b", re.IGNORECASE),
+                re.compile(rf"\bQuestion\s*{num}\b", re.IGNORECASE),
+                re.compile(rf"(?:^|\n)\s*{num}[\.\)]\s+", re.IGNORECASE)
+            ])
 
-        # Extract snippet phrases from understanding or logic to check multi-page spans
         content_snippets = []
-        for text_source in (prog_detail.problem_understanding, prog_detail.logic_approach, prog_detail.what_i_observed):
+        for text_source in (entry.problem_understanding, entry.logic_approach, entry.what_i_observed):
             if text_source and len(text_source.strip()) > 15:
-                # Take words from beginning of text
                 words = text_source.strip().split()[:6]
                 if len(words) >= 3:
                     content_snippets.append(" ".join(words).lower())
@@ -195,22 +200,31 @@ def assign_source_pages(
             if not page_text:
                 continue
 
-            # Check header match
             if any(p.search(page_text) for p in patterns):
                 matched_pages.add(page_num)
 
-            # Check snippet match for continuation pages
             lower_page = page_text.lower()
             for snippet in content_snippets:
                 if snippet in lower_page:
                     matched_pages.add(page_num)
 
         if matched_pages:
-            prog_detail.source_pages = sorted(list(matched_pages))
+            entry.source_pages = sorted(list(matched_pages))
         elif len(page_breakdown) == 1:
-            prog_detail.source_pages = [1]
+            entry.source_pages = [1]
         else:
+            entry.source_pages = []
+
+    # Also keep legacy programs dictionary in sync if populated
+    for prog_key, prog_detail in extraction_result.programs.items():
+        if prog_detail.status != "detected":
             prog_detail.source_pages = []
+            continue
+        for entry in entries:
+            if (entry.report_program_id.replace("R", "P") == prog_key or
+                (entry.student_written_program_number and entry.student_written_program_number == re.sub(r"[^\d]", "", prog_key))):
+                prog_detail.source_pages = entry.source_pages
+                break
 
     return extraction_result
 
@@ -333,7 +347,11 @@ def _parse_and_validate_json(raw_content: str) -> Tuple[Optional[Dict[str, Any]]
 
 
 def _build_extraction_result(data: Dict[str, Any], expected_count: Optional[int] = None) -> ExtractionResult:
-    """Normalizes raw dictionary into validated ExtractionResult."""
+    """
+    Normalizes raw dictionary into validated ExtractionResult.
+    Produces detected_programs as a list of ReportProgramEntry (R1, R2, ...)
+    representing strictly what the student documented.
+    """
     objective = (
         data.get("objective_of_lab")
         or data.get("objective")
@@ -345,69 +363,72 @@ def _build_extraction_result(data: Dict[str, Any], expected_count: Optional[int]
         if objective.lower() in ("null", "none", ""):
             objective = None
 
-    raw_programs = data.get("programs", {})
-    normalized_incoming: Dict[str, Dict[str, Any]] = {}
-    max_prog_num = expected_count if expected_count is not None else 10
+    conclusion = (
+        data.get("conclusion")
+        or data.get("overall_conclusion")
+        or data.get("lab_conclusion")
+    )
+    if conclusion is not None:
+        conclusion = str(conclusion).strip()
+        if conclusion.lower() in ("null", "none", ""):
+            conclusion = None
 
-    # Collect programs whether returned as list or dict
+    def _clean_str(val: Any) -> Optional[str]:
+        if val is None:
+            return None
+        s = str(val).strip()
+        if s.lower() in ("null", "none", ""):
+            return None
+        return s
+
+    # Collect raw program items from either detected_programs or programs
+    raw_programs = data.get("detected_programs")
+    if raw_programs is None or (isinstance(raw_programs, list) and all(isinstance(x, str) for x in raw_programs)):
+        raw_programs = data.get("programs", [])
+
+    items_to_process: List[Dict[str, Any]] = []
     if isinstance(raw_programs, list):
-        for idx, item in enumerate(raw_programs):
-            if not isinstance(item, dict):
-                continue
-            p_num = None
-            for key_field in ("program", "program_number", "id", "name", "title"):
-                val = item.get(key_field)
-                if val:
-                    m = re.search(r"\d+", str(val))
-                    if m:
-                        p_num = int(m.group(0))
-                        break
-            if p_num is None:
-                p_num = idx + 1
-            max_prog_num = max(max_prog_num, p_num)
-            normalized_incoming[f"P{p_num}"] = item
-
+        for item in raw_programs:
+            if isinstance(item, dict):
+                items_to_process.append(item)
     elif isinstance(raw_programs, dict):
         for k, v in raw_programs.items():
-            if not isinstance(v, dict):
-                continue
-            m = re.search(r"\d+", str(k))
-            if m:
-                p_num = int(m.group(0))
-                max_prog_num = max(max_prog_num, p_num)
-                std_key = f"P{p_num}"
-                normalized_incoming[std_key] = v
+            if isinstance(v, dict):
+                v_copy = dict(v)
+                if "report_program_id" not in v_copy:
+                    v_copy["report_program_id"] = k.replace("P", "R") if k.startswith("P") else k
+                if "program_title" not in v_copy:
+                    v_copy["program_title"] = v_copy.get("title") or f"Program {k}"
+                items_to_process.append(v_copy)
 
-    programs: Dict[str, ProgramDetails] = {}
-    detected: List[str] = []
-    missing: List[str] = []
+    detected_entries: List[ReportProgramEntry] = []
+    r_counter = 1
 
-    # Ensure canonical keys cover all expected programs (e.g. P1..P3, P1..P10, P1..P13)
-    canonical_keys = [f"P{i}" for i in range(1, max_prog_num + 1)]
+    for raw_item in items_to_process:
+        raw_status = str(raw_item.get("status", "detected")).lower()
+        prob = _clean_str(raw_item.get("problem_understanding") or raw_item.get("problem") or raw_item.get("understanding"))
+        logic = _clean_str(raw_item.get("logic_approach") or raw_item.get("logic") or raw_item.get("approach"))
+        obs = _clean_str(raw_item.get("what_i_observed") or raw_item.get("observations") or raw_item.get("observation"))
+        vars_raw = raw_item.get("important_variables") or raw_item.get("variables") or []
 
-    for key in canonical_keys:
-        item = normalized_incoming.get(key)
-        if item is None:
-            programs[key] = ProgramDetails(status="not_detected")
-            missing.append(key)
+        has_substance = any([prob, logic, obs, vars_raw])
+        if raw_status == "not_detected" and not has_substance:
             continue
 
-        raw_status = str(item.get("status", "")).lower()
-        prob = item.get("problem_understanding") or item.get("problem") or item.get("understanding")
-        logic = item.get("logic_approach") or item.get("logic") or item.get("approach")
-        obs = item.get("what_i_observed") or item.get("observations") or item.get("observation")
-        vars_raw = item.get("important_variables") or item.get("variables") or []
+        r_id = f"R{r_counter}"
+        r_counter += 1
 
-        has_content = any([prob, logic, obs, vars_raw])
+        written_num = raw_item.get("student_written_program_number")
+        if not written_num:
+            title_str = str(raw_item.get("program_title") or raw_item.get("title") or "")
+            m = re.search(r"(?:Program|Problem|Question|P)\s*(\d+)", title_str, re.IGNORECASE)
+            if m:
+                written_num = m.group(1)
 
-        if raw_status == "detected" or has_content:
-            status = "detected"
-            detected.append(key)
-        else:
-            status = "not_detected"
-            missing.append(key)
+        title = raw_item.get("program_title") or raw_item.get("title")
+        if not title:
+            title = f"Report Entry {r_id}"
 
-        # Parse variables
         clean_vars: List[VariableItem] = []
         if isinstance(vars_raw, list):
             for v in vars_raw:
@@ -420,58 +441,86 @@ def _build_extraction_result(data: Dict[str, Any], expected_count: Optional[int]
                             purpose=str(v_purpose).strip()
                         ))
 
-        def _clean_str(val: Any) -> Optional[str]:
-            if val is None:
-                return None
-            s = str(val).strip()
-            if s.lower() in ("null", "none", ""):
-                return None
-            return s
+        source_pages = raw_item.get("source_pages", [])
+        if not isinstance(source_pages, list):
+            source_pages = [source_pages] if source_pages else []
 
-        programs[key] = ProgramDetails(
-            status=status,
-            source_pages=[],
-            problem_understanding=_clean_str(prob),
-            logic_approach=_clean_str(logic),
+        entry = ReportProgramEntry(
+            report_program_id=r_id,
+            student_written_program_number=str(written_num) if written_num else None,
+            program_title=str(title).strip(),
+            status="detected",
+            problem_understanding=prob,
+            logic_approach=logic,
             important_variables=clean_vars,
-            what_i_observed=_clean_str(obs)
+            what_i_observed=obs,
+            source_pages=source_pages
         )
+        detected_entries.append(entry)
 
     # Cross-Program Deduplication Guardrail:
     # Detects and neutralizes grouped descriptions (e.g. Level-1, Level-2) copied across multiple programs
-    text_usage: Dict[str, List[Tuple[str, str]]] = {}
-    for p_key, p_detail in programs.items():
-        if p_detail.status != "detected":
-            continue
+    text_usage: Dict[str, List[Tuple[int, str]]] = {}
+    for idx, entry in enumerate(detected_entries):
         for field_name in ("problem_understanding", "logic_approach", "what_i_observed"):
-            val = getattr(p_detail, field_name)
+            val = getattr(entry, field_name)
             if val and len(val.strip()) > 20:
                 norm_val = re.sub(r"\s+", " ", val.strip().lower())
-                text_usage.setdefault(norm_val, []).append((p_key, field_name))
+                text_usage.setdefault(norm_val, []).append((idx, field_name))
 
     for norm_text, occurrences in text_usage.items():
         if len(occurrences) > 1:
-            for p_key, field_name in occurrences:
-                setattr(programs[p_key], field_name, None)
-            for p_key, _ in occurrences:
-                p_obj = programs[p_key]
-                has_substance = any([
-                    p_obj.problem_understanding,
-                    p_obj.logic_approach,
-                    p_obj.what_i_observed,
-                    p_obj.important_variables
-                ])
-                if not has_substance:
-                    p_obj.status = "not_detected"
-                    if p_key in detected:
-                        detected.remove(p_key)
-                    if p_key not in missing:
-                        missing.append(p_key)
+            for idx, field_name in occurrences:
+                setattr(detected_entries[idx], field_name, None)
 
-    detected.sort(key=lambda x: int(re.search(r'\d+', x).group(0)) if re.search(r'\d+', x) else 0)
-    missing.sort(key=lambda x: int(re.search(r'\d+', x).group(0)) if re.search(r'\d+', x) else 0)
+    # Retain entries that still have substantive content
+    valid_entries: List[ReportProgramEntry] = []
+    for entry in detected_entries:
+        has_substance = any([
+            entry.problem_understanding,
+            entry.logic_approach,
+            entry.what_i_observed,
+            entry.important_variables
+        ])
+        if has_substance or entry.program_title:
+            valid_entries.append(entry)
 
-    overall_status = "success" if detected else ("partial" if objective else "failed")
+    # Legacy programs dictionary for backward compatibility
+    legacy_programs: Dict[str, ProgramDetails] = {}
+    missing_list: List[str] = []
+
+    is_legacy_dict = isinstance(data.get("programs"), dict) and "detected_programs" not in data
+    if is_legacy_dict:
+        raw_dict = data.get("programs", {})
+        total_p = expected_count if expected_count else (10 if any(k.startswith("P") for k in raw_dict) else len(raw_dict))
+        for i in range(1, total_p + 1):
+            pk = f"P{i}"
+            v_entry = next((e for e in valid_entries if e.student_written_program_number == str(i) or e.report_program_id == f"R{i}"), None)
+            if v_entry:
+                legacy_programs[pk] = ProgramDetails(
+                    status="detected",
+                    source_pages=v_entry.source_pages,
+                    problem_understanding=v_entry.problem_understanding,
+                    logic_approach=v_entry.logic_approach,
+                    important_variables=v_entry.important_variables,
+                    what_i_observed=v_entry.what_i_observed
+                )
+            else:
+                legacy_programs[pk] = ProgramDetails(status="not_detected")
+                missing_list.append(pk)
+    else:
+        for i, entry in enumerate(valid_entries):
+            p_key = f"P{i+1}"
+            legacy_programs[p_key] = ProgramDetails(
+                status="detected",
+                source_pages=entry.source_pages,
+                problem_understanding=entry.problem_understanding,
+                logic_approach=entry.logic_approach,
+                important_variables=entry.important_variables,
+                what_i_observed=entry.what_i_observed
+            )
+
+    overall_status = "success" if valid_entries else ("partial" if objective else "failed")
     errors = []
     if overall_status == "failed":
         errors.append("No valid laboratory programs or lab objective could be extracted from the document.")
@@ -479,8 +528,9 @@ def _build_extraction_result(data: Dict[str, Any], expected_count: Optional[int]
     return ExtractionResult(
         status=overall_status,
         objective_of_lab=objective,
-        programs=programs,
-        detected_programs=detected,
-        missing_programs=missing,
+        conclusion=conclusion,
+        detected_programs=valid_entries,
+        programs=legacy_programs,
+        missing_programs=missing_list,
         errors=errors
     )

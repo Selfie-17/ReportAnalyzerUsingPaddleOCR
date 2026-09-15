@@ -11,6 +11,8 @@ from verifier import (
     build_verification_messages,
     stream_observation_verification,
     verify_observation_report_sync,
+    evaluate_observation_report,
+    render_verification_markdown,
     check_ollama_status,
     OFFICIAL_INSTRUCTION_MANUAL,
     DEFAULT_MANUAL_QUESTIONS_PRESET,
@@ -115,7 +117,7 @@ def test_stream_observation_verification(mock_post):
 
 
 @patch("verifier.requests.post")
-def test_verify_observation_report_sync(mock_post):
+def test_evaluate_observation_report_legacy(mock_post):
     mock_resp = MagicMock()
     mock_resp.raise_for_status = MagicMock()
     mock_resp.json.return_value = {
@@ -137,12 +139,55 @@ def test_verify_observation_report_sync(mock_post):
     }
     mock_post.return_value = mock_resp
 
+    eval_result = evaluate_observation_report(
+        report_text="Program 1: Factors\nFind factors of n.",
+        assigned_questions="Program 1: Factors"
+    )
+    result = render_verification_markdown(eval_result)
+    assert "# 📊 Laboratory Observation Report" in result
+    assert "## 📊 Final Score" in result
+
+
+@patch("verifier.requests.post")
+def test_verify_observation_report_sync_always_unified(mock_post):
+    """
+    verify_observation_report_sync MUST have exactly one normal evaluation path:
+    evaluate_holistic_student() -> render_holistic_evaluation_markdown().
+    Passing assigned_questions must NEVER trigger the legacy 42-mark evaluator.
+    """
+    mock_resp = MagicMock()
+    mock_resp.raise_for_status = MagicMock()
+    mock_resp.json.return_value = {
+        "message": {
+            "content": json.dumps({
+                "dimensions": [
+                    {"dimension": "D1", "name": "Syntax & Code Validity", "score": 2.0, "assessment": "Valid syntax", "evidence": ["Clean compilation"]},
+                    {"dimension": "D2", "name": "Algorithmic Logic", "score": 2.0, "assessment": "Correct logic", "evidence": ["Proper loops"]},
+                    {"dimension": "D3", "name": "Observation Report Quality", "score": 2.0, "assessment": "Good report", "evidence": ["Clear explanations"]},
+                    {"dimension": "D4", "name": "Conceptual Understanding", "score": 2.0, "assessment": "Consistent claims", "evidence": ["Matches code"]},
+                    {"dimension": "D5", "name": "Novelty & Presentation Readiness", "score": 2.0, "assessment": "Clean presentation", "evidence": ["Well documented"]}
+                ],
+                "interesting_logic": [],
+                "presentation_readiness": [],
+                "strengths": ["Clear logic"],
+                "improvement_areas": ["Add comments"],
+                "overall_summary": "Solid submission"
+            })
+        }
+    }
+    mock_post.return_value = mock_resp
+
     result = verify_observation_report_sync(
         report_text="Program 1: Factors\nFind factors of n.",
         assigned_questions="Program 1: Factors"
     )
-    assert "# 📊 Laboratory Observation Report" in result
-    assert "## 📊 Final Score" in result
+    assert "# Unified Student Evaluation" in result
+    assert "D1 — Syntax & Code Validity" in result
+    assert "D5 — Novelty" in result
+    assert "Assigned Questions" not in result
+    assert "42 marks" not in result
+    assert "0 / 42" not in result
+    assert "Requirements Compliance Matrix" not in result
 
 
 @patch("verifier.requests.get")

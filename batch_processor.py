@@ -29,9 +29,15 @@ from schemas import (
     ExtractionResult,
     BatchStudentStatus,
     BatchManifest,
+    HolisticEvaluationResult,
 )
 from extractor import extract_observation_report, DEFAULT_OLLAMA_URL, DEFAULT_MODEL
-from verifier import verify_observation_report_sync, format_extraction_for_evaluation, parse_evaluation_scores
+from verifier import (
+    verify_observation_report_sync,
+    format_extraction_for_evaluation,
+    parse_evaluation_scores,
+    find_student_code,
+)
 
 # Allowed file extensions for student observation reports
 ALLOWED_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
@@ -304,6 +310,7 @@ def discover_student_reports(base_dir: str) -> Dict[str, Dict[str, Any]]:
 
         students[sid] = {
             "file_path": best_file,
+            "student_dir": student_dir,
             "error": error_msg
         }
 
@@ -643,17 +650,24 @@ class BatchPipeline:
                         ext_dict = data.get("extraction", {})
                         ocr_txt = data.get("ocr", {}).get("text", "")
                         eval_text = ocr_txt.strip() if ocr_txt and ocr_txt.strip() else format_extraction_for_evaluation(ext_dict, fallback_text=ocr_txt)
+                        s_dir = os.path.dirname(file_path) if file_path else None
+                        student_code = find_student_code(student_id=student_id, week_id=self.week_id, student_dir=s_dir)
                         try:
                             eval_md = verify_observation_report_sync(
                                 report_text=eval_text,
-                                assigned_questions=self.assigned_questions,
-                                instruction_manual=self.instruction_manual,
                                 base_url=self.ollama_url,
                                 model=self.model,
-                                temperature=self.temperature
+                                temperature=self.temperature,
+                                student_code=student_code,
+                                extracted_report=ext_dict,
+                                student_id=student_id,
+                                week_id=self.week_id
                             )
                             setattr(status_entry, "evaluation_status", "completed")
                             data["evaluation"] = eval_md
+                            holistic_res = getattr(verify_observation_report_sync, "last_holistic_result", None)
+                            if isinstance(holistic_res, (HolisticEvaluationResult, dict)):
+                                data["holistic_evaluation"] = holistic_res.model_dump() if hasattr(holistic_res, "model_dump") else (holistic_res.dict() if hasattr(holistic_res, "dict") else holistic_res)
                             with open(output_full_path, "w", encoding="utf-8") as f:
                                 json.dump(data, f, indent=2, ensure_ascii=False)
                             eval_md_path = os.path.join(self.students_dir, f"{student_id}_evaluation.md")
@@ -761,14 +775,18 @@ class BatchPipeline:
                 eval_text = format_extraction_for_evaluation(ext_res, fallback_text=ocr_text)
             else:
                 eval_text = ocr_text.strip() if ocr_text and ocr_text.strip() else format_extraction_for_evaluation(ext_res, fallback_text=ocr_text)
+            s_dir = os.path.dirname(file_path) if file_path else None
+            student_code = find_student_code(student_id=student_id, week_id=self.week_id, student_dir=s_dir)
             try:
                 eval_md = verify_observation_report_sync(
                     report_text=eval_text,
-                    assigned_questions=self.assigned_questions,
-                    instruction_manual=self.instruction_manual,
                     base_url=self.ollama_url,
                     model=self.model,
-                    temperature=self.temperature
+                    temperature=self.temperature,
+                    student_code=student_code,
+                    extracted_report=ext_res,
+                    student_id=student_id,
+                    week_id=self.week_id
                 )
                 setattr(status_entry, "evaluation_status", "completed")
             except Exception as e:
@@ -790,6 +808,9 @@ class BatchPipeline:
             total_time=ocr_res.get("total_time", 0.0)
         )
 
+        holistic_eval = getattr(verify_observation_report_sync, "last_holistic_result", None)
+        if not isinstance(holistic_eval, (HolisticEvaluationResult, dict)):
+            holistic_eval = None
         student_report = StudentObservationReport(
             student_id=student_id,
             section_id=self.section_id or "SEC1",
@@ -798,7 +819,8 @@ class BatchPipeline:
             source=source_meta,
             ocr=ocr_obj,
             extraction=ext_res,
-            evaluation=eval_md
+            evaluation=eval_md,
+            holistic_evaluation=holistic_eval
         )
 
         # Atomic Save student JSON
@@ -947,14 +969,19 @@ class BatchPipeline:
                             progress_cb(status_entry)
 
                         eval_text = format_extraction_for_evaluation(ext_data, fallback_text=ocr_text)
+                        s_info = discovered_students.get(sid, {}) if discovered_students else {}
+                        s_dir = s_info.get("student_dir") or (os.path.dirname(s_info.get("file_path")) if s_info.get("file_path") else None)
+                        student_code = find_student_code(student_id=sid, week_id=self.week_id, student_dir=s_dir)
                         try:
                             eval_md = verify_observation_report_sync(
                                 report_text=eval_text,
-                                assigned_questions=self.assigned_questions,
-                                instruction_manual=self.instruction_manual,
                                 base_url=self.ollama_url,
                                 model=self.model,
-                                temperature=self.temperature
+                                temperature=self.temperature,
+                                student_code=student_code,
+                                extracted_report=ext_data,
+                                student_id=sid,
+                                week_id=self.week_id
                             )
                             setattr(status_entry, "evaluation_status", "completed")
                         except Exception as e:
@@ -962,6 +989,9 @@ class BatchPipeline:
                             setattr(status_entry, "evaluation_status", "failed")
 
                         student_data["evaluation"] = eval_md
+                        holistic_res = getattr(verify_observation_report_sync, "last_holistic_result", None)
+                        if isinstance(holistic_res, (HolisticEvaluationResult, dict)):
+                            student_data["holistic_evaluation"] = holistic_res.model_dump() if hasattr(holistic_res, "model_dump") else (holistic_res.dict() if hasattr(holistic_res, "dict") else holistic_res)
                         atomic_write_json(out_json, student_data)
 
                         # Write standalone markdown
