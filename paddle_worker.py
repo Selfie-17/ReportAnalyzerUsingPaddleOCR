@@ -1,3 +1,9 @@
+# Preload torch on Windows to avoid DLL load conflict (shm.dll) with paddle
+try:
+    import torch
+except Exception:
+    pass
+
 import sys
 import os
 import json

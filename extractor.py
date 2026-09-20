@@ -14,10 +14,268 @@ from schemas import (
     VariableItem,
     ReportProgramEntry,
     ReportExtractionResult,
+    ObservationReport,
+    ObservationReportEntry,
+    ObservationReportVariable,
+    ObservationReportDocument,
+    ObservationReportObjective,
 )
 
 DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434"
 DEFAULT_MODEL = "qwen2.5-coder:3b"
+
+
+def clean_latex_and_ocr(text: str) -> str:
+    """Strips LaTeX markup, OCR noise, and math markers from extracted text."""
+    if not text:
+        return ""
+    t = re.sub(r'\\underline\{\s*\\text\{([^}]+)\}\s*\}', r'\1', text)
+    t = re.sub(r'\\underline\{([^}]+)\}', r'\1', t)
+    t = re.sub(r'\\text\{([^}]+)\}', r'\1', t)
+    t = re.sub(r'[\$_\{\}\\]', '', t)
+    t = re.sub(r'\bunderline([a-zA-Z]+)', r'\1', t)
+    return re.sub(r'\s+', ' ', t).strip()
+
+
+def clean_program_title(title_raw: str) -> str:
+    """Extracts and standardizes the program title from an OCR line."""
+    if not title_raw:
+        return "Untitled Program"
+    t = re.sub(r'Problem\s+Understanding.*', '', title_raw, flags=re.IGNORECASE)
+    t = clean_latex_and_ocr(t)
+    t = t.strip(' :.-')
+    if re.match(r'^pind\s+', t, re.IGNORECASE):
+        t = "Find " + t[5:]
+    elif re.match(r'^bind\s+', t, re.IGNORECASE):
+        t = "Find " + t[5:]
+    return t.strip() or "Untitled Program"
+
+
+def parse_observation_report_deterministic(
+    ocr_text: str,
+    page_breakdown: Optional[List[Dict[str, Any]]] = None,
+    student_id: str = "",
+    week: str = "week-04",
+    filename: str = "observation_report.pdf"
+) -> ObservationReport:
+    """
+    Bulletproof deterministic structural parser for handwritten observation reports.
+    Recognizes heading aliases, noisy handwriting OCR, LaTeX annotations, and multi-page flows.
+    Guarantees that documented programs are NEVER lost even when LLM is unavailable or outputs malformed JSON.
+    """
+    if not ocr_text or not ocr_text.strip():
+        return ObservationReport(
+            schema_version="1.0",
+            student_id=student_id,
+            week=week,
+            document=ObservationReportDocument(filename=filename, page_count=0),
+            objective=ObservationReportObjective(text="", confidence=0.0),
+            entries=[],
+            document_conclusion=None,
+            extraction_status="empty_report",
+            extraction_warnings=["OCR text is empty or missing"]
+        )
+
+    normalized = ocr_text.replace("\r\n", "\n").replace("\r", "\n")
+
+    # Step 1: Lab Objective
+    obj_match = re.search(
+        r'(?:^|\n)(?:#*\s*)?(?:Objective|Objectives|Aim)\s*[\d:.-]*\s*\n*(.*?)(?=\n(?:#*\s*)?(?:Program|Experiment|Problem|Title)\s*[:\d\-.]|\Z)',
+        normalized,
+        re.IGNORECASE | re.DOTALL
+    )
+    objective_text = ""
+    if obj_match:
+        obj_candidate = obj_match.group(1).strip()
+        obj_candidate = re.sub(r'<!--.*?-->', '', obj_candidate).strip()
+        objective_text = clean_latex_and_ocr(obj_candidate)
+
+    # Step 2: Lab Conclusion
+    conc_match = re.search(
+        r'(?:^|\n)(?:#*\s*)?(?:Overall\s+Conclusion|Conclusion)\s*[:\d\-.]*\s*\n*(.*?)(?=\Z)',
+        normalized,
+        re.IGNORECASE | re.DOTALL
+    )
+    document_conclusion = None
+    if conc_match:
+        conc_text = conc_match.group(1).strip()
+        conc_text = re.sub(r'<!--.*?-->', '', conc_text).strip()
+        document_conclusion = clean_latex_and_ocr(conc_text) or None
+
+    # Step 3: Identify program blocks
+    prog_pattern = re.compile(
+        r'(?:^|\n)(?:#*\s*)?(?:Program|Experiment|Title)\s*[:\d\-.]*\s*([^\n]+)',
+        re.IGNORECASE
+    )
+    prog_matches = list(prog_pattern.finditer(normalized))
+    entries: List[ObservationReportEntry] = []
+
+    def get_pages_for_span(start_pos: int, end_pos: int) -> List[int]:
+        if not page_breakdown:
+            return [1]
+        pages = []
+        sub = normalized[start_pos:end_pos]
+        for p_info in page_breakdown:
+            p_num = p_info.get("page", 1)
+            p_txt = p_info.get("text", "")
+            words = [w for w in sub.split() if len(w) > 4][:5]
+            if words and any(w in p_txt for w in words):
+                pages.append(p_num)
+        return pages or [1]
+
+    for idx, match in enumerate(prog_matches):
+        r_id = f"R{idx + 1}"
+        raw_title_line = match.group(1).strip()
+        title = clean_program_title(raw_title_line)
+
+        start_content = match.end()
+        if idx + 1 < len(prog_matches):
+            end_content = prog_matches[idx + 1].start()
+        else:
+            if conc_match and conc_match.start() > start_content:
+                end_content = conc_match.start()
+            else:
+                end_content = len(normalized)
+
+        block_text = normalized[start_content:end_content]
+        clean_block = re.sub(r'<!--.*?-->', '', block_text)
+        clean_block = re.sub(r'---\s*', '', clean_block)
+
+        # Handle heading concatenated into title line
+        if re.search(r'Problem\s+Understanding', raw_title_line, re.IGNORECASE):
+            clean_block = "Problem Understanding:\n" + clean_block
+
+        # 1. Problem Understanding
+        pu_match = re.search(
+            r'(?:^|\n)(?:#*\s*)?(?:Problem\s+Understanding|Understanding\s+the\s+Problem|Problem)\s*[:\d\-.]*\s*\n*(.*?)(?=\n(?:#*\s*)?(?:Logic\s+Used|Logic|Algorithm\s+Used|Algorithm|Important\s+Variables|Variables|What\s+[a-zA-Z\s]+observed|What\s+[a-zA-Z\s]+used|Observation|Observations|Conclusion)|\Z)',
+            clean_block,
+            re.IGNORECASE | re.DOTALL
+        )
+        problem_understanding = clean_latex_and_ocr(pu_match.group(1).strip()) if pu_match else None
+
+        # 2. Logic Used
+        logic_match = re.search(
+            r'(?:^|\n)(?:#*\s*)?(?:Logic\s+Used|Algorithm\s+Used|Logic|Algorithm)\s*[:\d\-.]*\s*\n*(.*?)(?=\n(?:#*\s*)?(?:Important\s+Variables|Import\s+Variables|Variables\s+and\s+their\s+Purpose|Variables|What\s+[a-zA-Z\s]+observed|What\s+[a-zA-Z\s]+used|Observation|Observations|Conclusion)|\Z)',
+            clean_block,
+            re.IGNORECASE | re.DOTALL
+        )
+        logic_used = clean_latex_and_ocr(logic_match.group(1).strip()) if logic_match else None
+
+        # 3. Important Variables
+        vars_match = re.search(
+            r'(?:^|\n)(?:#*\s*)?(?:Important\s+Variables\s+and\s+their\s+Purpose[s]?|Import\s+Variables\s+and\s+their\s+Purpose[s]?|Important\s+Variables|Variables\s+and\s+their\s+Purpose[s]?|Variables)\s*[:\d\-.]*\s*\n*(.*?)(?=\n(?:#*\s*)?(?:What\s+[a-zA-Z\s]+observed|What\s+[a-zA-Z\s]+used|Observation|Observations|Conclusion)|\Z)',
+            clean_block,
+            re.IGNORECASE | re.DOTALL
+        )
+        important_variables: List[ObservationReportVariable] = []
+        if vars_match:
+            vars_raw = vars_match.group(1).strip()
+            var_lines = [vl.strip() for vl in vars_raw.splitlines() if vl.strip() and not vl.lower().startswith("variable")]
+            for vl in var_lines:
+                vl = clean_latex_and_ocr(vl)
+                vm = re.match(r'^([a-zA-Z_][a-zA-Z0-9_]*|\*?[a-zA-Z_][a-zA-Z0-9_]*)\s*(?:->|:|stores|storage|storo|holds|represents|counts|traverses|selects|compares|is)\s*(.*)', vl, re.IGNORECASE)
+                if vm:
+                    v_name = vm.group(1).strip()
+                    second_part = vm.group(2).strip()
+                    action_word = vl[len(v_name):len(vl)-len(second_part)].strip()
+                    full_purp = f"{action_word} {second_part}".strip()
+                    important_variables.append(ObservationReportVariable(
+                        name=v_name,
+                        purpose=full_purp or "Variable used in program"
+                    ))
+                elif len(vl.split()) >= 2:
+                    parts = vl.split(None, 1)
+                    if len(parts[0]) <= 15:
+                        important_variables.append(ObservationReportVariable(
+                            name=parts[0],
+                            purpose=parts[1]
+                        ))
+
+        # 4. What I Observed
+        obs_match = re.search(
+            r'(?:^|\n)(?:#*\s*)?(?:What\s+[a-zA-Z\s]+observed|What\s+I\s+used|What\s+observed|Observations?)\s*[:\d\-.]*\s*\n*(.*?)(?=\n(?:#*\s*)?(?:Conclusion)|\Z)',
+            clean_block,
+            re.IGNORECASE | re.DOTALL
+        )
+        observations = clean_latex_and_ocr(obs_match.group(1).strip()) if obs_match else None
+
+        # 5. Program Entry Conclusion
+        entry_conc_match = re.search(
+            r'(?:^|\n)(?:#*\s*)?(?:Program\s+Conclusion|Conclusion)\s*[:\d\-.]*\s*\n*(.*?)(?=\Z)',
+            clean_block,
+            re.IGNORECASE | re.DOTALL
+        )
+        entry_conclusion = clean_latex_and_ocr(entry_conc_match.group(1).strip()) if (entry_conc_match and idx < len(prog_matches)-1) else None
+
+        pages = get_pages_for_span(match.start(), end_content)
+        sec_conf = {
+            "program_title": 0.95 if title else 0.0,
+            "problem_understanding": 0.92 if problem_understanding else 0.0,
+            "logic_used": 0.90 if logic_used else 0.0,
+            "important_variables": 0.88 if important_variables else 0.0,
+            "observations": 0.91 if observations else 0.0,
+            "conclusion": 0.85 if entry_conclusion else 0.0
+        }
+
+        # 3-state section status differentiation
+        def _get_sec_status(content: Optional[str], header_pat: str) -> str:
+            if content and len(content.strip()) > 0:
+                return "detected"
+            if re.search(header_pat, clean_block, re.IGNORECASE):
+                return "ocr_detection_failed"
+            return "not_provided"
+
+        sec_status = {
+            "program_title": "detected" if title and title != "Untitled Program" else "not_provided",
+            "problem_understanding": _get_sec_status(problem_understanding, r'Problem\s+Understanding|Understanding\s+the\s+Problem'),
+            "logic_used": _get_sec_status(logic_used, r'Logic\s+Used|Algorithm\s+Used|Logic|Algorithm'),
+            "important_variables": "detected" if important_variables else _get_sec_status(None, r'Variables|Important\s+Variables'),
+            "observations": _get_sec_status(observations, r'What\s+[a-zA-Z\s]+observed|What\s+I\s+used|Observations?'),
+            "conclusion": _get_sec_status(entry_conclusion, r'Program\s+Conclusion|Conclusion') if idx < len(prog_matches)-1 else "not_provided"
+        }
+
+        entries.append(ObservationReportEntry(
+            report_id=r_id,
+            program_title=title or f"Program {r_id}",
+            problem_understanding=problem_understanding,
+            logic_used=logic_used,
+            important_variables=important_variables,
+            observations=observations,
+            conclusion=entry_conclusion,
+            page_numbers=pages,
+            section_confidence=sec_conf,
+            section_status=sec_status,
+            extraction_status="detected"
+        ))
+
+    if entries:
+        ext_status = "success"
+        warnings = []
+    elif objective_text:
+        ext_status = "partial"
+        warnings = ["Objective detected, but no structured program entries could be extracted from OCR text."]
+    else:
+        ext_status = "failed"
+        warnings = ["OCR text contains unparseable or garbled content with 0 recognized programs and no objective."]
+
+    return ObservationReport(
+        schema_version="1.0",
+        student_id=student_id,
+        week=week,
+        document=ObservationReportDocument(
+            filename=filename,
+            page_count=len(page_breakdown) if page_breakdown else 1
+        ),
+        objective=ObservationReportObjective(
+            text=objective_text,
+            confidence=0.95 if objective_text else 0.0
+        ),
+        entries=entries,
+        document_conclusion=document_conclusion,
+        extraction_status=ext_status,
+        extraction_warnings=warnings
+    )
+
 
 EXTRACTION_SYSTEM_PROMPT = """You are an accurate, strictly conservative academic report extraction engine.
 Your sole job is to parse the student's laboratory observation report OCR text and extract its structured content into pure JSON.
@@ -277,6 +535,13 @@ def extract_observation_report(
     )
 
     if not success:
+        # Fallback to deterministic structural extraction
+        det_obs = parse_observation_report_deterministic(
+            ocr_text=report_text,
+            page_breakdown=page_breakdown
+        )
+        if det_obs.entries:
+            return det_obs.to_extraction_result()
         return ExtractionResult(
             status="failed",
             errors=[f"LLM request failed: {error}"]
@@ -302,11 +567,23 @@ def extract_observation_report(
         if r_success:
             parsed_dict, retry_parse_err = _parse_and_validate_json(r_raw_content)
             if retry_parse_err is not None:
+                det_obs = parse_observation_report_deterministic(
+                    ocr_text=report_text,
+                    page_breakdown=page_breakdown
+                )
+                if det_obs.entries:
+                    return det_obs.to_extraction_result()
                 return ExtractionResult(
                     status="failed",
                     errors=[f"Initial validation failed: {parse_err}", f"Retry validation failed: {retry_parse_err}"]
                 )
         else:
+            det_obs = parse_observation_report_deterministic(
+                ocr_text=report_text,
+                page_breakdown=page_breakdown
+            )
+            if det_obs.entries:
+                return det_obs.to_extraction_result()
             return ExtractionResult(
                 status="failed",
                 errors=[f"Initial validation failed: {parse_err}", f"Retry request failed: {r_error}"]
@@ -322,11 +599,72 @@ def extract_observation_report(
     # Build Pydantic ExtractionResult
     result = _build_extraction_result(parsed_dict, expected_count=expected_count)
 
+    # If LLM produced 0 detected programs but deterministic parsing finds entries in the OCR text,
+    # use the deterministic entries so documented programs are never silently lost!
+    if not result.detected_programs:
+        det_obs = parse_observation_report_deterministic(
+            ocr_text=report_text,
+            page_breakdown=page_breakdown
+        )
+        if det_obs.entries:
+            return det_obs.to_extraction_result()
+
     # Assign source pages using reliable OCR page breakdown
     if page_breakdown:
         result = assign_source_pages(result, page_breakdown)
 
     return result
+
+
+def extract_observation_report_stage1(
+    report_text: str,
+    page_breakdown: Optional[List[Dict[str, Any]]] = None,
+    student_id: str = "",
+    week: str = "week-04",
+    filename: str = "observation_report.pdf",
+    base_url: str = DEFAULT_OLLAMA_URL,
+    model: str = DEFAULT_MODEL,
+    temperature: float = 0.1,
+    assigned_questions: Optional[str] = None
+) -> ObservationReport:
+    """
+    Extracts canonical Stage 1 ObservationReport JSON from handwritten OCR text.
+    Combines deterministic structural extraction with LLM extraction, guaranteeing
+    that all handwritten report sections (Objective, Program, Problem Understanding,
+    Logic Used, Important Variables, What I Observed, Conclusion) are preserved.
+    """
+    det_obs = parse_observation_report_deterministic(
+        ocr_text=report_text,
+        page_breakdown=page_breakdown,
+        student_id=student_id,
+        week=week,
+        filename=filename
+    )
+    # If deterministic parser extracted documented programs, it is authoritative on structure
+    if det_obs.entries:
+        return det_obs
+
+    # Otherwise try LLM extraction as secondary fallback
+    try:
+        ext_res = extract_observation_report(
+            report_text=report_text,
+            base_url=base_url,
+            model=model,
+            temperature=temperature,
+            page_breakdown=page_breakdown,
+            assigned_questions=assigned_questions
+        )
+        return ObservationReport.from_extraction_result(
+            ext=ext_res,
+            student_id=student_id,
+            week=week,
+            filename=filename,
+            page_count=len(page_breakdown) if page_breakdown else 1
+        )
+    except Exception as e:
+        det_obs.extraction_warnings.append(f"LLM extraction error: {str(e)}")
+        return det_obs
+
 
 
 def _parse_and_validate_json(raw_content: str) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:

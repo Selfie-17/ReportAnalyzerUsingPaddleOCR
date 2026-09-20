@@ -1,1599 +1,883 @@
-import streamlit as st
-import subprocess
-import sys
-import tempfile
+"""
+app.py
+Academic Laboratory Evaluation Studio - 4-Step Pipeline.
+Step 1: Upload Zip
+Step 2: Do OCR (PaddleOCR-VL 1.6)
+Step 3: Calculate Score (Deterministic Rubric Heuristics)
+Step 4: LLM as Judge Recommended Score (Dual Reports: Ollama & Gemini)
+"""
+
 import os
+import sys
 import json
 import time
 import zipfile
-import re
+import io
 from typing import Any, Dict, List, Optional, Union
+from dotenv import load_dotenv
 import pandas as pd
-import pymupdf as fitz  # Modern PyMuPDF import for PDF preview and page rendering
+import streamlit as st
+import pymupdf as fitz  # PyMuPDF for PDF preview rendering
 
-from verifier import (
-    check_ollama_status,
-    stream_observation_verification,
-    evaluate_observation_report,
-    render_verification_markdown,
-    sanitize_student_ocr_text,
-    DEFAULT_OLLAMA_URL,
-    DEFAULT_MODEL,
-    DEFAULT_MANUAL_QUESTIONS_PRESET,
-    WEEK1_13_PROGRAMS_PRESET,
-    OFFICIAL_INSTRUCTION_MANUAL,
-    format_extraction_for_evaluation,
-    parse_evaluation_scores,
-    parse_assigned_questions,
-    parse_instruction_manual,
-    match_report_programs_to_questions,
-    evaluate_holistic_student,
-    render_holistic_evaluation_markdown,
-    ingest_student_code_from_json_or_files,
-    DEFAULT_MATCHED_THRESHOLD,
-    DEFAULT_REVIEW_THRESHOLD,
-)
-from extractor import extract_observation_report
+load_dotenv()
+
 from schemas import (
     StudentObservationReport,
-    SourceMeta,
-    OcrResult,
-    CompleteSectionReport,
-    SectionSummary,
-    ReportProgramEntry,
-    ReportExtractionResult,
-    StudentCodeSnippet,
-    StudentCodeCollection,
-    QuestionMatch,
-    HolisticEvaluationResult,
+    CalculatedScore,
+    LLMJudgeEvaluation,
+    BatchStudentStatus,
+    BatchManifest,
+)
+from verifier import (
+    check_ollama_status,
+    calculate_deterministic_score,
+    evaluate_with_ollama,
+    evaluate_with_gemini,
+    DEFAULT_OLLAMA_URL,
+    DEFAULT_MODEL,
+    find_student_code,
 )
 from batch_processor import (
+    BatchPipeline,
     validate_and_extract_zip,
     discover_student_reports,
-    BatchPipeline,
-    SecurityError,
     get_paddle_python,
+    run_paddle_worker_sync,
 )
-
-
-def _format_program_badge(p: Any) -> str:
-    """Safely formats a detected or missing program entry for display whether string, dict, or object."""
-    if isinstance(p, str):
-        return p
-    if isinstance(p, dict):
-        r_id = p.get("report_program_id") or p.get("program_id") or p.get("problem_id") or ""
-        title = p.get("program_title") or p.get("title") or ""
-        if r_id and title:
-            return f"{r_id}: {title}"
-        return r_id or title or str(p)
-    if hasattr(p, "report_program_id"):
-        r_id = getattr(p, "report_program_id", "")
-        title = getattr(p, "program_title", "")
-        if r_id and title:
-            return f"{r_id}: {title}"
-        return r_id or title or str(p)
-    return str(p)
-
 
 # ============================================================
 # PAGE CONFIGURATION
 # ============================================================
 
 st.set_page_config(
-    page_title="PaddleOCR-VL 1.6 & Section-Wise Report Extractor",
+    page_title="Academic Laboratory Evaluation Studio",
     page_icon="🔬",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
+# Custom CSS for rich aesthetics and clean step indicators
+st.markdown(
+    """
+    <style>
+    .main-title {
+        font-size: 2.2rem;
+        font-weight: 700;
+        margin-bottom: 0.2rem;
+        color: #1E293B;
+    }
+    .sub-title {
+        font-size: 1.05rem;
+        color: #64748B;
+        margin-bottom: 1.5rem;
+    }
+    .step-badge {
+        display: inline-block;
+        padding: 0.25rem 0.6rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        border-radius: 9999px;
+        margin-right: 0.4rem;
+    }
+    .metric-card {
+        background: #F8FAFC;
+        border: 1px solid #E2E8F0;
+        border-radius: 8px;
+        padding: 1rem;
+        text-align: center;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 # ============================================================
 # SESSION STATE INITIALIZATION
 # ============================================================
 
-if "uploaded_file_id" not in st.session_state:
-    st.session_state["uploaded_file_id"] = None
+if "pipeline" not in st.session_state:
+    st.session_state["pipeline"] = None
 
-if "ocr_text" not in st.session_state:
-    st.session_state["ocr_text"] = ""
+if "section_id" not in st.session_state:
+    st.session_state["section_id"] = "SEC2"
 
-if "edited_text" not in st.session_state:
-    st.session_state["edited_text"] = ""
+if "week_id" not in st.session_state:
+    st.session_state["week_id"] = "week-04"
 
-if "ocr_meta" not in st.session_state:
-    st.session_state["ocr_meta"] = {}
+if "active_step" not in st.session_state:
+    st.session_state["active_step"] = 0
 
-if "structured_extraction" not in st.session_state:
-    st.session_state["structured_extraction"] = None
+if "uploaded_zip_name" not in st.session_state:
+    st.session_state["uploaded_zip_name"] = None
 
-if "single_student_report" not in st.session_state:
-    st.session_state["single_student_report"] = None
-
-if "verification_result" not in st.session_state:
-    st.session_state["verification_result"] = ""
-
-if "instruction_manual" not in st.session_state:
-    st.session_state["instruction_manual"] = OFFICIAL_INSTRUCTION_MANUAL
-
-if "debug_stdout" not in st.session_state:
-    st.session_state["debug_stdout"] = ""
-
-if "student_code_collection" not in st.session_state:
-    st.session_state["student_code_collection"] = None
-
-if "question_matches" not in st.session_state:
-    st.session_state["question_matches"] = []
-
-if "holistic_evaluation_result" not in st.session_state:
-    st.session_state["holistic_evaluation_result"] = None
-
-if "evaluation_result" not in st.session_state:
-    st.session_state["evaluation_result"] = None
-
-if "holistic_markdown" not in st.session_state:
-    st.session_state["holistic_markdown"] = ""
-
-# Batch session states
-if "batch_zip_id" not in st.session_state:
-    st.session_state["batch_zip_id"] = None
-
-if "batch_extracted_dir" not in st.session_state:
-    st.session_state["batch_extracted_dir"] = None
-
-if "batch_discovered" not in st.session_state:
-    st.session_state["batch_discovered"] = {}
-
-if "batch_manifest" not in st.session_state:
-    st.session_state["batch_manifest"] = None
-
-if "batch_zip_path" not in st.session_state:
-    st.session_state["batch_zip_path"] = None
+if "discovered_students" not in st.session_state:
+    st.session_state["discovered_students"] = {}
 
 
 # ============================================================
-# SIDEBAR: ENVIRONMENT & OLLAMA SETTINGS
+# SIDEBAR: SYSTEM DIAGNOSTICS & ENGINE SETTINGS
 # ============================================================
 
 with st.sidebar:
-    st.header("⚙️ Settings & System")
+    st.header("⚙️ Evaluation Engines")
 
-    st.subheader("🖥️ OCR Environment")
-    st.write("**Worker:** `paddle_worker.py`")
-    st.write("**Model:** `PaddleOCR-VL 1.6 (GPU:0)`")
-    st.info("⚡ Concurrency strictly set to **1** for RTX 4050 6GB VRAM safety.")
+    # 1. OCR Engine
+    st.subheader("🖥️ Step 2: OCR Engine")
+    st.caption("PaddleOCR-VL 1.6 (GPU:0 • Concurrency = 1)")
     with st.expander("Paddle Python Executable"):
         st.code(get_paddle_python(), language="text")
 
     st.divider()
 
-    st.subheader("🧠 Qwen 2.5 Coder 3B")
-    ollama_url = st.text_input(
-        "Ollama URL",
-        value=DEFAULT_OLLAMA_URL,
-        help="Base URL for local Ollama server"
-    )
-
+    # 2. Local Ollama Engine
+    st.subheader("🦙 Step 4: Ollama Judge")
+    ollama_url = st.text_input("Ollama URL", value=os.environ.get("OLLAMA_BASE_URL", DEFAULT_OLLAMA_URL))
     ollama_status = check_ollama_status(base_url=ollama_url)
 
     if ollama_status["ok"]:
         if ollama_status["model_found"]:
-            st.success("🟢 Ollama Connected • Qwen 2.5 Coder 3B Ready")
+            st.success("🟢 Ollama Connected • Qwen Ready")
         else:
-            st.warning(f"🟡 Ollama online, but '{DEFAULT_MODEL}' not found.")
-            st.caption(f"Available models: {', '.join(ollama_status['models']) or 'None'}")
+            st.warning(f"🟡 Ollama online • '{DEFAULT_MODEL}' not active")
     else:
         st.error("🔴 Ollama Offline")
-        st.caption(ollama_status.get("error", "Cannot connect to Ollama server"))
+        st.caption(ollama_status.get("error", "Run 'ollama serve'"))
 
-    # Model selector with fallback
-    avail_models = ollama_status.get("models", [])
-    if DEFAULT_MODEL not in avail_models and avail_models:
-        default_idx = 0
-    elif DEFAULT_MODEL in avail_models:
-        default_idx = avail_models.index(DEFAULT_MODEL)
-    else:
-        avail_models = [DEFAULT_MODEL]
-        default_idx = 0
-
-    selected_model = st.selectbox(
-        "Model",
-        options=avail_models,
-        index=default_idx,
-        help="Local LLM for structured extraction and evaluation"
-    )
-
-    temperature = st.slider(
-        "Sampling Temperature",
-        min_value=0.0,
-        max_value=1.0,
-        value=0.1,
-        step=0.05,
-        help="Low temperature (0.1) produces deterministic structured JSON without hallucinations"
-    )
+    ollama_model = st.text_input("Ollama Model", value=os.environ.get("OLLAMA_MODEL", DEFAULT_MODEL))
 
     st.divider()
 
-    with st.expander("📖 5-Section Rubric Guidelines"):
-        st.markdown(
-            """
-            **5 Required Report Sections:**
-            1. **Objective of Lab:** Concepts practiced & skills intended (written once).
-            2. **Problem Understanding:** Inputs, outputs, calculation (own words, NO C code).
-            3. **Logic / Approach Used:** Step-by-step reasoning, loops, branches (NO code dumping).
-            4. **Important Variables:** `| Variable | Purpose |` format.
-            5. **What I Observed:** Actual behavior, condition handling (reject generic fluff).
-            """
-        )
+    # 3. Google Gemini Engine
+    st.subheader("♊ Step 4: Gemini Judge")
+    gemini_key = os.environ.get("GEMINI_API_KEY", "")
+    gemini_model = st.text_input("Gemini Model", value=os.environ.get("GEMINI_MODEL", "gemini-3.5-flash"))
+
+    if gemini_key:
+        st.success(f"🟢 Gemini API Key Active (`{gemini_key[:8]}...`)")
+    else:
+        st.warning("🟡 Gemini API Key Missing in .env")
+
+    st.divider()
+    temperature = st.slider("Evaluation Temperature", min_value=0.0, max_value=0.7, value=0.1, step=0.05)
 
 
 # ============================================================
-# MAIN HEADER & NAVIGATION TABS
+# INITIALIZE / GET BATCH PIPELINE
 # ============================================================
 
-st.title("🔬 PaddleOCR-VL & Section-Wise Report Extractor")
-st.caption(
-    "GPU-Accelerated Document OCR + Qwen 2.5 Coder 3B Conservative Structured JSON Extraction (Sections 1–6)"
+def get_or_create_pipeline(section_id: str, week_id: str) -> BatchPipeline:
+    pipeline = BatchPipeline(
+        week_id=week_id,
+        section_id=section_id,
+        ollama_url=ollama_url,
+        model=ollama_model,
+        temperature=temperature
+    )
+    st.session_state["pipeline"] = pipeline
+    return pipeline
+
+pipeline = get_or_create_pipeline(st.session_state["section_id"], st.session_state["week_id"])
+
+
+# ============================================================
+# MAIN APPLICATION HEADER
+# ============================================================
+
+st.markdown('<div class="main-title">🔬 Academic Laboratory Evaluation Studio</div>', unsafe_allow_html=True)
+st.markdown(
+    '<div class="sub-title">Structured 4-Step Pipeline • Deterministic Rubric Scoring • Dual Independent LLM Judges (Ollama & Gemini)</div>',
+    unsafe_allow_html=True
 )
 
-# ============================================================
-# TOP CONFIGURATION: INSTRUCTION MANUAL / RUBRIC (OPTIONAL)
-# ============================================================
-with st.expander("📖 Evaluation Criteria & Instruction Manual (Optional Guidelines)", expanded=False):
-    st.caption(
-        "The system evaluates the student's observation report directly against their submitted .c code files. "
-        "Students are asked to answer/document only a subset of their programs in the report; unselected programs are not penalized."
-    )
-    mp1, mp2 = st.columns(2)
-    with mp1:
-        if st.button("📖 Load Default 5-Section Rubric", use_container_width=True, help="Load official 5-section manual"):
-            st.session_state["instruction_manual"] = OFFICIAL_INSTRUCTION_MANUAL
-            st.rerun()
-    with mp2:
-        if st.button("🗑️ Clear Manual", use_container_width=True, help="Clear manual", key="btn_clear_manual"):
-            st.session_state["instruction_manual"] = ""
-            st.rerun()
-
-    parsed_man = parse_instruction_manual(st.session_state.get("instruction_manual", ""))
-    sec_names = parsed_man.get("per_question_requirements", [])
-    st.caption(f"✓ **{len(sec_names)} required section(s) detected:** `{', '.join(sec_names)}`")
-
-    manual_text_top = st.text_area(
-        "Instruction Manual / Evaluation Requirements:",
-        value=st.session_state.get("instruction_manual", OFFICIAL_INSTRUCTION_MANUAL),
-        height=140,
-        placeholder="Enter the instruction manual defining what sections and rules are required...",
-        key="top_instruction_manual"
-    )
-    st.session_state["instruction_manual"] = manual_text_top
-
-tab_single, tab_batch = st.tabs([
-    "📄 Single Student Report",
-    "📦 Section-Wise Batch Extraction (SEC1–SEC6)"
+# 4-Step Tabs
+tab1, tab2, tab3, tab4 = st.tabs([
+    "📦 Step 1: Upload Zip",
+    "🔍 Step 2: Do OCR",
+    "📐 Step 3: Calculate Score",
+    "⚖️ Step 4: LLM as Judge (Dual Reports)"
 ])
 
 
 # ============================================================
-# TAB 1: SINGLE STUDENT WORKFLOW
+# STEP 1: UPLOAD ZIP
 # ============================================================
 
-with tab_single:
-    st.subheader("📤 Step 1: Upload Document (Image or Multi-Page PDF)")
+with tab1:
+    st.subheader("📦 Step 1: Ingest Cohort Archive")
+    st.caption("Upload a ZIP archive containing student observation reports (PDF/images) and C source code files.")
 
-    uploaded_file = st.file_uploader(
-        "Upload laboratory report",
-        type=["png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff", "pdf"],
-        key="single_file_uploader"
+    c1, c2 = st.columns(2)
+    with c1:
+        sec_input = st.text_input("Section ID", value=st.session_state["section_id"], key="sec_in")
+        if sec_input != st.session_state["section_id"]:
+            st.session_state["section_id"] = sec_input
+            pipeline = get_or_create_pipeline(sec_input, st.session_state["week_id"])
+    with c2:
+        wk_input = st.text_input("Week ID", value=st.session_state["week_id"], key="wk_in")
+        if wk_input != st.session_state["week_id"]:
+            st.session_state["week_id"] = wk_input
+            pipeline = get_or_create_pipeline(st.session_state["section_id"], wk_input)
+
+    uploaded_zip = st.file_uploader(
+        "Upload Section ZIP File",
+        type=["zip"],
+        help="Upload cohort ZIP file (e.g. week-4-sec-2.zip)"
     )
 
-    if uploaded_file is None:
-        st.session_state["uploaded_file_id"] = None
-        st.session_state["ocr_text"] = ""
-        st.session_state["edited_text"] = ""
-        st.session_state["ocr_meta"] = {}
-        st.session_state["structured_extraction"] = None
-        st.session_state["single_student_report"] = None
-        st.session_state["verification_result"] = ""
-        st.session_state["debug_stdout"] = ""
-        st.session_state["student_code_collection"] = None
-        st.session_state["question_matches"] = []
-        st.session_state["holistic_evaluation_result"] = None
-        st.session_state["evaluation_result"] = None
-        st.session_state["holistic_markdown"] = ""
-        st.info("👆 Upload an image or PDF report to begin OCR extraction.")
-    else:
-        # Detect new file upload and reset session state accordingly
-        current_file_id = f"{uploaded_file.name}_{uploaded_file.size}"
-        if st.session_state["uploaded_file_id"] != current_file_id:
-            st.session_state["uploaded_file_id"] = current_file_id
-            st.session_state["ocr_text"] = ""
-            st.session_state["edited_text"] = ""
-            st.session_state["ocr_meta"] = {}
-            st.session_state["structured_extraction"] = None
-            st.session_state["single_student_report"] = None
-            st.session_state["verification_result"] = ""
-            st.session_state["debug_stdout"] = ""
-            st.session_state["student_code_collection"] = None
-            st.session_state["question_matches"] = []
-            st.session_state["holistic_evaluation_result"] = None
-            st.session_state["evaluation_result"] = None
-            st.session_state["holistic_markdown"] = ""
+    # Also detect if local week-4-sec-2.zip exists in workspace for instant loading
+    local_default_zip = f"{st.session_state['week_id']}-{st.session_state['section_id'].lower()}.zip"
+    alt_local_zip = "week-4-sec-2.zip"
 
-        # Preview Section
-        file_ext = os.path.splitext(uploaded_file.name)[1].lower()
-        is_pdf = file_ext == ".pdf"
+    use_local_zip = None
+    if os.path.exists(local_default_zip):
+        use_local_zip = local_default_zip
+    elif os.path.exists(alt_local_zip):
+        use_local_zip = alt_local_zip
 
-        prev_col1, prev_col2 = st.columns([3, 1])
+    if use_local_zip and not uploaded_zip:
+        st.info(f"💡 Detected local workspace archive: `{use_local_zip}` ({os.path.getsize(use_local_zip) / (1024*1024):.2f} MB)")
+        if st.button(f"📥 Load Local Archive ({use_local_zip})", type="secondary"):
+            with st.spinner("Extracting and discovering students from local archive..."):
+                res = pipeline.step1_ingest_zip(use_local_zip)
+                st.session_state["discovered_students"] = res["students"]
+                st.session_state["uploaded_zip_name"] = use_local_zip
+                st.success(f"Discovered {res['total_students']} student(s) successfully!")
+                st.rerun()
 
-        with prev_col1:
-            if is_pdf:
-                try:
-                    pdf_bytes = uploaded_file.getvalue()
-                    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-                    total_pdf_pages = len(doc)
+    if uploaded_zip is not None:
+        if st.session_state.get("uploaded_zip_name") != uploaded_zip.name:
+            with st.spinner(f"Extracting {uploaded_zip.name} and scanning submissions..."):
+                res = pipeline.step1_ingest_zip(uploaded_zip)
+                st.session_state["discovered_students"] = res["students"]
+                st.session_state["uploaded_zip_name"] = uploaded_zip.name
+                st.success(f"Discovered {res['total_students']} student(s) from {uploaded_zip.name}!")
+                st.rerun()
 
-                    if total_pdf_pages > 1:
-                        page_sel = st.slider(
-                            "Select page to preview:",
-                            min_value=1,
-                            max_value=total_pdf_pages,
-                            value=1,
-                            step=1,
-                            key="single_pdf_slider"
-                        )
-                    else:
-                        page_sel = 1
+    # Load existing state if already available on disk
+    if not st.session_state["discovered_students"] and os.path.exists(pipeline.students_dir):
+        discovered = {}
+        for fname in os.listdir(pipeline.students_dir):
+            if fname.endswith(".json") and not any(fname.endswith(s) for s in ("_manifest.json", "_summary.json", "_reports.json")):
+                sid = os.path.splitext(fname)[0]
+                discovered[sid] = {"file_path": os.path.join(pipeline.students_dir, fname)}
+        if discovered:
+            st.session_state["discovered_students"] = discovered
 
-                    page = doc[page_sel - 1]
-                    pix = page.get_pixmap(dpi=150)
-                    img_bytes = pix.tobytes("png")
-                    st.image(
-                        img_bytes,
-                        caption=f"{uploaded_file.name} — Page {page_sel} of {total_pdf_pages}",
-                        use_container_width=True
-                    )
-                    doc.close()
-                except Exception as e:
-                    st.warning(f"Could not render PDF preview: {e}")
-            else:
-                st.image(
-                    uploaded_file,
-                    caption=uploaded_file.name,
-                    use_container_width=True
-                )
-
-        with prev_col2:
-            st.write("**Filename:**")
-            st.info(uploaded_file.name)
-            st.write("**Size:**")
-            st.write(f"{uploaded_file.size / 1024:.2f} KB")
-            st.write("**Format:**")
-            st.write("📄 PDF Document" if is_pdf else f"🖼️ Image ({uploaded_file.type or file_ext})")
-            if is_pdf:
-                st.write("**Pages:**")
-                st.write(f"{total_pdf_pages} page(s)")
-
-        # STEP 2: OCR EXTRACTION
+    # Display Discovered Students Table
+    discovered_map = st.session_state["discovered_students"]
+    if discovered_map:
         st.divider()
-        st.subheader("🚀 Step 2: Extract Text with PaddleOCR-VL 1.6")
+        st.write(f"### 📋 Discovered Submissions ({len(discovered_map)} Students)")
 
-        pages_to_extract_arg = None
-        if is_pdf and total_pdf_pages > 1:
-            st.write("**Page Extraction Selection:**")
-            p_sel_col1, p_sel_col2 = st.columns([1, 2])
-            with p_sel_col1:
-                page_mode = st.radio(
-                    "Pages to extract:",
-                    [f"All Pages (1 to {total_pdf_pages})", "Select Specific Pages"],
-                    key="single_page_mode"
-                )
-            with p_sel_col2:
-                if page_mode == "Select Specific Pages":
-                    sel_pages = st.multiselect(
-                        "Choose pages to extract:",
-                        options=list(range(1, total_pdf_pages + 1)),
-                        default=list(range(1, total_pdf_pages + 1)),
-                        key="single_page_multiselect"
-                    )
-                    if sel_pages:
-                        pages_to_extract_arg = ",".join(map(str, sorted(sel_pages)))
-                        st.caption(f"Will extract {len(sel_pages)} selected page(s): {pages_to_extract_arg}")
-                    else:
-                        st.warning("No pages selected. Defaulting to all pages.")
-                else:
-                    st.caption(f"All {total_pdf_pages} pages will be rendered and extracted page-by-page sequentially.")
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Students Discovered", len(discovered_map))
+        docs_count = sum(1 for s in discovered_map.values() if s.get("file_path"))
+        m2.metric("Report Documents Found", docs_count)
+        code_count = 0
+        for sid, info in discovered_map.items():
+            s_dir = info.get("student_dir") or (os.path.dirname(info.get("file_path")) if info.get("file_path") else None)
+            coll = find_student_code(student_id=sid, week_id=st.session_state["week_id"], student_dir=s_dir)
+            if coll and coll.problems:
+                code_count += len(coll.problems)
+            elif info.get("code_count"):
+                code_count += info.get("code_count", 0)
+        m3.metric("C Source Files Ingested", code_count)
 
-        extract_col, _ = st.columns([1, 2])
-        with extract_col:
-            extract_button = st.button(
-                "⚡ Run PaddleOCR-VL Extraction",
-                type="primary",
-                use_container_width=True,
-                key="btn_run_single_ocr"
+        roster_rows = []
+        for sid, info in discovered_map.items():
+            f_path = info.get("file_path")
+            f_name = os.path.basename(f_path) if f_path else "Not Found"
+            s_dir = info.get("student_dir") or (os.path.dirname(info.get("file_path")) if info.get("file_path") else None)
+            st_code = find_student_code(student_id=sid, week_id=st.session_state["week_id"], student_dir=s_dir)
+            c_filenames = [p.source_file for p in st_code.problems] if st_code and st_code.problems else [os.path.basename(cf) for cf in info.get("code_files", [])]
+            c_count = len(c_filenames)
+            c_display = f"✅ {c_count} file(s) ({', '.join(c_filenames[:3])}{'...' if c_count > 3 else ''})" if c_count > 0 else "⚠️ 0 files"
+            roster_rows.append({
+                "Student ID": sid,
+                "Report Document": f_name,
+                "Submitted C Files": c_display,
+                "Discovered Status": "Ready for OCR" if f_path else "Missing Document"
+            })
+
+        st.dataframe(pd.DataFrame(roster_rows), use_container_width=True)
+
+        # Interactive C Code Inspector
+        with st.expander("📂 Inspect Submitted C Source Code Files per Student"):
+            code_students = list(discovered_map.keys())
+            selected_student_for_code = st.selectbox(
+                "Select Student to Inspect Code",
+                options=code_students,
+                key="code_viewer_student"
             )
+            if selected_student_for_code:
+                s_info = discovered_map[selected_student_for_code]
+                s_dir = s_info.get("student_dir") or (os.path.dirname(s_info.get("file_path")) if s_info.get("file_path") else None)
+                st_code = find_student_code(student_id=selected_student_for_code, week_id=st.session_state["week_id"], student_dir=s_dir)
+                if st_code and st_code.problems:
+                    st.write(f"**Found {len(st_code.problems)} C Program(s) for `{selected_student_for_code}`:**")
+                    code_tabs = st.tabs([p.source_file or p.problem_id for p in st_code.problems[:15]])
+                    for i, c_tab in enumerate(code_tabs):
+                        prob = st_code.problems[i]
+                        with c_tab:
+                            st.caption(f"Filename: `{prob.source_file}` • Problem ID: `{prob.problem_id}`")
+                            st.code(prob.source_code, language="c")
+                else:
+                    st.info("No C source code files found for this student.")
+    else:
+        st.info("Please upload a ZIP file or load an existing archive to proceed.")
 
-        if extract_button:
-            temp_path = None
-            try:
-                with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as temp_file:
-                    temp_file.write(uploaded_file.getbuffer())
-                    temp_path = temp_file.name
 
-                worker_path = os.path.join(
-                    os.path.dirname(os.path.abspath(__file__)),
-                    "paddle_worker.py"
-                )
+# ============================================================
+# STEP 2: DO OCR
+# ============================================================
 
-                status_box = st.empty()
-                page_desc = f"{pages_to_extract_arg or f'all {total_pdf_pages}'} pages" if is_pdf else "1 image"
-                status_box.info(f"⏳ Running PaddleOCR-VL 1.6 worker process on GPU:0 (Extracting {page_desc} one-by-one)...")
+with tab2:
+    st.subheader("🔍 Step 2: Extract Text with PaddleOCR-VL 1.6")
+    st.caption("Runs PaddleOCR sequentially on each student's observation report. Extracts verbatim text and page breakdowns.")
 
-                worker_python = get_paddle_python()
-                cmd = [worker_python, worker_path, temp_path]
-                if pages_to_extract_arg:
-                    cmd.extend(["--pages", pages_to_extract_arg])
+    discovered_map = st.session_state["discovered_students"]
+    if not discovered_map:
+        st.warning("⚠️ No students discovered yet. Please complete Step 1 (Upload Zip) first.")
+    else:
+        # Status calculation
+        ocr_completed = 0
+        ocr_failed = 0
+        ocr_pending = 0
 
-                start_time = time.perf_counter()
-                process = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace"
-                )
-                total_time = time.perf_counter() - start_time
-                stdout = process.stdout.strip()
-                st.session_state["debug_stdout"] = stdout
-
-                if process.returncode != 0:
-                    status_box.error("❌ PaddleOCR-VL worker encountered an error.")
-                    with st.expander("🔴 Worker Error Output (stderr)", expanded=True):
-                        st.code(process.stderr)
-                    st.stop()
-
-                worker_result = None
-                for line in reversed(stdout.splitlines()):
-                    line = line.strip()
-                    if not line:
-                        continue
+        for sid in discovered_map:
+            st_entry = pipeline.state.get(sid)
+            st_ocr = getattr(st_entry, "ocr_status", None)
+            if st_ocr == "completed":
+                ocr_completed += 1
+            elif st_ocr == "failed":
+                ocr_failed += 1
+            else:
+                # Check if JSON on disk has OCR text
+                j_path = os.path.join(pipeline.students_dir, f"{sid}.json")
+                if os.path.exists(j_path):
                     try:
-                        candidate = json.loads(line)
-                        if isinstance(candidate, dict) and "success" in candidate:
-                            worker_result = candidate
-                            break
-                    except json.JSONDecodeError:
-                        continue
-
-                if worker_result is None or not worker_result.get("success", False):
-                    status_box.error("❌ Could not parse valid result from worker.")
-                    st.stop()
-
-                status_box.success(f"✅ OCR Extraction complete in {total_time:.2f}s!")
-                extracted_text = str(worker_result.get("text", "")).strip()
-                st.session_state["ocr_text"] = extracted_text
-                st.session_state["edited_text"] = extracted_text
-                st.session_state["ocr_meta"] = {
-                    "total_time": total_time,
-                    "num_pages": worker_result.get("num_pages", 1),
-                    "page_breakdown": worker_result.get("page_breakdown", []),
-                    "device": worker_result.get("device", "Unknown"),
-                    "paddle_version": worker_result.get("paddle_version", "Unknown"),
-                }
-                # Reset downstream outputs
-                st.session_state["structured_extraction"] = None
-                st.session_state["single_student_report"] = None
-                st.session_state["verification_result"] = ""
-
-            except Exception as e:
-                st.error(f"Failed to execute OCR process: {e}")
-                st.exception(e)
-            finally:
-                if temp_path and os.path.exists(temp_path):
-                    try:
-                        os.remove(temp_path)
+                        with open(j_path, "r", encoding="utf-8") as f:
+                            d = json.load(f)
+                        if d.get("ocr", {}).get("text"):
+                            ocr_completed += 1
+                            continue
                     except Exception:
                         pass
+                ocr_pending += 1
 
-        # STEP 3: REVIEW & EDIT EXTRACTED TEXT
-        current_ocr_text = st.session_state.get("ocr_text", "")
-        if current_ocr_text:
+        c_o1, c_o2, c_o3 = st.columns(3)
+        c_o1.metric("OCR Completed", f"{ocr_completed} / {len(discovered_map)}")
+        c_o2.metric("OCR Pending", ocr_pending)
+        c_o3.metric("OCR Failures", ocr_failed)
+
+        force_ocr = st.checkbox("🔄 Force Re-extract OCR (bypass cached results)", value=False)
+
+        col_ocr_btn1, col_ocr_btn2 = st.columns(2)
+        with col_ocr_btn1:
+            run_all_ocr = st.button("🚀 Extract OCR for All Students", type="primary")
+        with col_ocr_btn2:
+            inspected_single = st.selectbox("Or select single student:", options=list(discovered_map.keys()), key="ocr_single_sel")
+            run_single_ocr = st.button(f"🔍 Extract OCR for {inspected_single} Only", type="secondary")
+
+        if run_all_ocr or run_single_ocr:
+            target_sids = [inspected_single] if run_single_ocr else list(discovered_map.keys())
+            p_bar = st.progress(0.0)
+            status_text = st.empty()
+            errors = []
+
+            for idx, sid in enumerate(target_sids):
+                status_text.write(f"Extracting OCR for **{sid}** ({idx+1}/{len(target_sids)})...")
+                p_bar.progress(idx / len(target_sids))
+
+                res = pipeline.step2_run_ocr(
+                    discovered_students={sid: discovered_map[sid]},
+                    force_rerun=force_ocr
+                )
+                p_bar.progress((idx + 1) / len(target_sids))
+
+                if not res.get(sid, {}).get("success", False):
+                    errors.append((sid, res.get(sid, {}).get("error", "Unknown error")))
+
+            status_text.empty()
+            p_bar.empty()
+
+            if errors:
+                for s_err, msg in errors:
+                    st.error(f"❌ OCR extraction failed for **{s_err}**: {msg}")
+            else:
+                st.success("✅ OCR extraction completed successfully!")
+            st.rerun()
+
+        st.divider()
+        st.write("### 📑 OCR Document & Text Inspector")
+
+        inspected_sid = inspected_single
+        if inspected_sid:
+            out_json = os.path.join(pipeline.students_dir, f"{inspected_sid}.json")
+            ocr_text = ""
+            doc_file = discovered_map.get(inspected_sid, {}).get("file_path")
+
+            if os.path.exists(out_json):
+                try:
+                    with open(out_json, "r", encoding="utf-8") as f:
+                        d = json.load(f)
+                    ocr_text = d.get("ocr", {}).get("text", "")
+                except Exception:
+                    pass
+
+            v_col1, v_col2 = st.columns([1, 1])
+            with v_col1:
+                st.write(f"**Document File:** `{os.path.basename(doc_file) if doc_file else 'N/A'}`")
+                if doc_file and doc_file.lower().endswith(".pdf") and os.path.exists(doc_file):
+                    try:
+                        doc = fitz.open(doc_file)
+                        page_num = st.number_input("Page Preview", min_value=1, max_value=len(doc), value=1)
+                        page = doc[page_num - 1]
+                        pix = page.get_pixmap(dpi=150)
+                        st.image(pix.tobytes("png"), caption=f"{inspected_sid} - Page {page_num}/{len(doc)}", use_container_width=True)
+                    except Exception as e:
+                        st.caption(f"Preview unavailable: {e}")
+                elif doc_file and os.path.exists(doc_file) and doc_file.lower().endswith((".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff")):
+                    st.image(doc_file, caption=f"{inspected_sid} Scan", use_container_width=True)
+                else:
+                    st.info("Document file preview not found on disk.")
+
+            with v_col2:
+                st.write(f"**Extracted OCR Text:** ({len(ocr_text)} characters)")
+                if ocr_text:
+                    st.text_area("Extracted Markdown / Text", value=ocr_text, height=450, key=f"ocr_ta_{inspected_sid}")
+                    st.download_button(
+                        label=f"📥 Download {inspected_sid}_ocr.txt",
+                        data=ocr_text,
+                        file_name=f"{inspected_sid}_ocr.txt",
+                        mime="text/plain"
+                    )
+                else:
+                    st.info(f"No OCR text extracted yet for {inspected_sid}. Click 'Run OCR Extraction' above.")
+
+            # Show C files attached to this student
+            s_info = discovered_map.get(inspected_sid, {})
+            s_dir = s_info.get("student_dir") or (os.path.dirname(doc_file) if doc_file else None)
+            st_code = find_student_code(student_id=inspected_sid, week_id=st.session_state["week_id"], student_dir=s_dir)
+            if st_code and st_code.problems:
+                st.write(f"##### 💻 Attached C Code Submissions ({len(st_code.problems)} files)")
+                with st.expander(f"View {len(st_code.problems)} C files for {inspected_sid}"):
+                    code_tabs = st.tabs([p.source_file or p.problem_id for p in st_code.problems[:15]])
+                    for i, c_tab in enumerate(code_tabs):
+                        prob = st_code.problems[i]
+                        with c_tab:
+                            st.caption(f"Filename: `{prob.source_file}` • Problem ID: `{prob.problem_id}`")
+                            st.code(prob.source_code, language="c")
+
+
+# ============================================================
+# STEP 3: CALCULATE SCORE
+# ============================================================
+
+with tab3:
+    st.subheader("📐 Step 3: Calculate Deterministic Rubric Score")
+    st.caption("100% reproducible algorithmic scoring (0 to 10 marks). Evaluates attempted questions, logic, variables table completeness, observations, and static C code validation. Zero LLM hallucination.")
+
+    discovered_map = st.session_state["discovered_students"]
+    if not discovered_map:
+        st.warning("⚠️ Please complete Step 1 (Upload Zip) first.")
+    else:
+        if st.button("⚙️ Calculate Algorithmic Scores for All Students", type="primary"):
+            with st.spinner("Calculating deterministic rubric scores across cohort..."):
+                scores_res = pipeline.step3_calculate_scores(discovered_students=discovered_map)
+                st.success(f"✅ Calculated scores for {len(scores_res)} student(s) successfully!")
+                st.rerun()
+
+        # Build and render calculated score table
+        calc_rows = []
+        total_scores = []
+        for sid in discovered_map:
+            j_path = os.path.join(pipeline.students_dir, f"{sid}.json")
+            if os.path.exists(j_path):
+                try:
+                    with open(j_path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    c_data = data.get("calculated_score")
+                    if c_data:
+                        tot = c_data.get("total_score", 0.0)
+                        total_scores.append(tot)
+                        det_p = c_data.get("detected_programs", [])
+                        det_p_str = f"{len(det_p)} ({', '.join(det_p[:4])}{'...' if len(det_p)>4 else ''})" if det_p else "—"
+
+                        calc_rows.append({
+                            "Student ID": sid,
+                            "Calculated Score": c_data.get("score_display", f"{tot:.1f} / 10.0"),
+                            "Grade": c_data.get("grade", "—"),
+                            "Verdict": c_data.get("status", "—"),
+                            "Attempted Programs": det_p_str,
+                            "Objective (/2)": c_data.get("objective", 0.0),
+                            "Understanding (/2)": c_data.get("problem_understanding", 0.0),
+                            "Logic (/2)": c_data.get("logic_approach", 0.0),
+                            "Variables Table (/2)": c_data.get("variables_table", 0.0),
+                            "Observations (/2)": c_data.get("what_i_observed", 0.0),
+                        })
+                except Exception:
+                    pass
+
+        if calc_rows:
             st.divider()
-            st.subheader("📝 Step 3: Extracted Text & User Review")
+            m_s1, m_s2, m_s3, m_s4 = st.columns(4)
+            avg_score = sum(total_scores) / len(total_scores) if total_scores else 0.0
+            app_count = sum(1 for r in calc_rows if r.get("Verdict") == "Approved")
+            m_s1.metric("Calculated Students", len(calc_rows))
+            m_s2.metric("Cohort Average", f"{avg_score:.2f} / 10.0")
+            m_s3.metric("Approved Count", f"{app_count} / {len(calc_rows)}")
+            m_s4.metric("Highest Calculated Score", f"{max(total_scores):.1f} / 10.0" if total_scores else "—")
 
-            meta = st.session_state.get("ocr_meta", {})
-            words_count = len(st.session_state["edited_text"].split())
-            chars_count = len(st.session_state["edited_text"])
+            df_calc = pd.DataFrame(calc_rows)
+            st.dataframe(df_calc, use_container_width=True)
 
-            m1, m2, m3, m4, m5 = st.columns(5)
-            with m1:
-                st.metric("⚡ OCR Time", f"{meta.get('total_time', 0):.2f}s")
-            with m2:
-                st.metric("📑 Total Pages", meta.get("num_pages", 1))
-            with m3:
-                st.metric("📝 Words", words_count)
-            with m4:
-                st.metric("🔤 Characters", chars_count)
-            with m5:
-                st.metric("🎮 Device", meta.get("device", "gpu:0"))
+            csv_calc_data = df_calc.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                label="📥 Download Step 3 Calculated Scores (CSV)",
+                data=csv_calc_data,
+                file_name=f"{st.session_state['section_id']}_{st.session_state['week_id']}_calculated_scores.csv",
+                mime="text/csv",
+                type="secondary"
+            )
+        else:
+            st.info("No scores calculated yet. Click 'Calculate Algorithmic Scores' above to evaluate cohort.")
 
-            st.caption("💡 Review or correct any OCR misspellings before structured extraction.")
 
-            tab_edit, tab_preview, tab_pages = st.tabs([
-                "✏️ Edit Extracted Text",
-                "👁️ Markdown Preview",
-                "📄 Page Breakdown"
+# ============================================================
+# STEP 4: LLM AS JUDGE (DUAL REPORTS: OLLAMA & GEMINI)
+# ============================================================
+
+with tab4:
+    st.subheader("⚖️ Step 4: LLM as Judge (Independent Dual Reports)")
+    st.caption("Executes qualitative LLM evaluation through Ollama and Google Gemini independently. Generates TWO distinct reports with no ambiguity.")
+
+    discovered_map = st.session_state["discovered_students"]
+    if not discovered_map:
+        st.warning("⚠️ Please complete Step 1 (Upload Zip) first.")
+    else:
+        # Engine selection
+        # Engine selection
+        c_p1, c_p2, c_p3 = st.columns(3)
+        with c_p1:
+            run_ollama_chk = st.checkbox("🦙 Run Ollama Judge (Qwen 2.5 Coder 3B)", value=True)
+        with c_p2:
+            run_gemini_chk = st.checkbox("♊ Run Gemini Judge (Google Gemini API)", value=bool(gemini_key))
+        with c_p3:
+            skip_existing_chk = st.checkbox("⏩ Resume / Skip Completed", value=True, help="Skip students who already have completed evaluations.")
+
+        providers_to_run = []
+        if run_ollama_chk:
+            providers_to_run.append("ollama")
+        if run_gemini_chk:
+            providers_to_run.append("gemini")
+
+        if st.button("⚖️ Run LLM as Judge Evaluation", type="primary", disabled=not providers_to_run):
+            p_bar = st.progress(0.0)
+            status_text = st.empty()
+
+            total_sids = list(discovered_map.keys())
+            for idx, sid in enumerate(total_sids):
+                status_text.write(f"Running LLM Judge ({', '.join(providers_to_run)}) for **{sid}** ({idx+1}/{len(total_sids)})...")
+                p_bar.progress(idx / len(total_sids))
+
+                try:
+                    pipeline.step4_run_llm_judges(
+                        providers=providers_to_run,
+                        discovered_students={sid: discovered_map[sid]},
+                        skip_existing=skip_existing_chk,
+                        gemini_model=gemini_model,
+                        gemini_key=gemini_key,
+                        auto_build_artifacts=False
+                    )
+                except Exception as e:
+                    st.warning(f"Warning during evaluation of {sid}: {e}")
+
+                p_bar.progress((idx + 1) / len(total_sids))
+
+            # Build summary artifacts and zips ONCE at the end of the batch
+            status_text.write("Packaging results and generating download archives...")
+            pipeline.save_manifest()
+            pipeline.build_scores_summary_csv()
+            if "ollama" in providers_to_run:
+                pipeline.create_model_reports_zip("ollama")
+                pipeline.build_provider_section_json("ollama")
+            if "gemini" in providers_to_run:
+                pipeline.create_model_reports_zip("gemini")
+                pipeline.build_provider_section_json("gemini")
+
+            status_text.empty()
+            p_bar.empty()
+            st.success("✅ LLM as Judge evaluation completed for all students!")
+            st.rerun()
+
+        # ============================================================
+        # TRI-SCORE COMPARISON TABLE (Step 3 vs Ollama vs Gemini)
+        # ============================================================
+        st.divider()
+        st.write("### 📊 Tri-Score Comparison Table (Calculated vs Ollama vs Gemini)")
+
+        comparison_rows = []
+        for sid in discovered_map:
+            j_path = os.path.join(pipeline.students_dir, f"{sid}.json")
+            if os.path.exists(j_path):
+                try:
+                    with open(j_path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    c_data = data.get("calculated_score", {})
+                    o_data = data.get("ollama_evaluation", {})
+                    g_data = data.get("gemini_evaluation", {})
+
+                    c_score = c_data.get("total_score")
+                    o_score = o_data.get("recommended_score")
+                    g_score = g_data.get("recommended_score")
+
+                    # Delta between judges
+                    delta_str = "—"
+                    if o_score is not None and g_score is not None:
+                        d_val = abs(o_score - g_score)
+                        delta_str = f"Δ {d_val:.1f}"
+
+                    comparison_rows.append({
+                        "Student ID": sid,
+                        "Step 3: Calculated Score": f"{c_score:.1f} / 10.0" if c_score is not None else "—",
+                        "Calculated Grade": c_data.get("grade", "—"),
+                        "Step 4: Ollama Score": f"{o_score:.1f} / 10.0" if o_score is not None else "—",
+                        "Ollama Grade": o_data.get("grade", "—"),
+                        "Step 4: Gemini Score": f"{g_score:.1f} / 10.0" if g_score is not None else "—",
+                        "Gemini Grade": g_data.get("grade", "—"),
+                        "Judge Delta": delta_str,
+                        "Consensus Status": "Approved" if (c_data.get("status") == "Approved" or o_data.get("status") == "Approved" or g_data.get("status") == "Approved") else "Needs Revision"
+                    })
+                except Exception:
+                    pass
+
+        if comparison_rows:
+            df_comp = pd.DataFrame(comparison_rows)
+            st.dataframe(df_comp, use_container_width=True)
+
+            csv_comp_data = df_comp.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                label="📥 Download Tri-Score Comparison Table (CSV)",
+                data=csv_comp_data,
+                file_name=f"{st.session_state['section_id']}_{st.session_state['week_id']}_tri_score_comparison.csv",
+                mime="text/csv",
+                type="secondary"
+            )
+
+        # ============================================================
+        # STUDENT DUAL REPORT INSPECTOR
+        # ============================================================
+        st.divider()
+        st.write("### 🔍 Student Dual Report Inspector")
+
+        eval_sid = st.selectbox("Select Student for In-Depth Report Inspection", options=list(discovered_map.keys()), key="eval_sel")
+        if eval_sid:
+            j_path = os.path.join(pipeline.students_dir, f"{eval_sid}.json")
+            st_data = {}
+            if os.path.exists(j_path):
+                with open(j_path, "r", encoding="utf-8") as f:
+                    st_data = json.load(f)
+
+            ollama_eval = st_data.get("ollama_evaluation", {})
+            gemini_eval = st_data.get("gemini_evaluation", {})
+            calc_data = st_data.get("calculated_score", {})
+            ocr_data = st_data.get("ocr", {})
+
+            r_tab_ollama, r_tab_gemini, r_tab_side, r_tab_calc, r_tab_ocr = st.tabs([
+                "🦙 Ollama Report",
+                "♊ Gemini Report",
+                "⚖️ Side-by-Side Comparison",
+                "📐 Calculated Scorecard",
+                "📑 Raw OCR Evidence"
             ])
 
-            with tab_edit:
-                edited_text = st.text_area(
-                    "Extracted Markdown (Editable):",
-                    value=st.session_state["edited_text"],
-                    height=300,
-                    key="text_editor_area"
-                )
-                st.session_state["edited_text"] = edited_text
+            with r_tab_ollama:
+                if ollama_eval and ollama_eval.get("full_report_markdown"):
+                    st.write(f"### 🦙 Ollama Evaluation Report (`{ollama_eval.get('model_name', 'qwen2.5-coder:3b')}`)")
+                    st.metric("Ollama Recommended Score", f"{ollama_eval.get('recommended_score', 0.0):.1f} / 10.0", f"Grade: {ollama_eval.get('grade', '—')}")
+                    st.markdown(ollama_eval.get("full_report_markdown", ""))
 
-            with tab_preview:
-                st.markdown(st.session_state["edited_text"])
-
-            with tab_pages:
-                page_breakdown = meta.get("page_breakdown", [])
-                if page_breakdown:
-                    for p in page_breakdown:
-                        with st.expander(f"📄 Page {p.get('page', 1)} Text", expanded=(len(page_breakdown) == 1)):
-                            st.text_area(
-                                f"Page {p.get('page', 1)} Content",
-                                value=p.get("text", ""),
-                                height=180,
-                                disabled=True,
-                                key=f"single_page_view_{p.get('page')}"
-                            )
-                else:
-                    st.info("Single-page content available in the main editor tab.")
-
-            d_col1, d_col2, d_col3 = st.columns([1, 1, 2])
-            with d_col1:
-                st.download_button(
-                    label="📥 Download Markdown (.md)",
-                    data=st.session_state["edited_text"],
-                    file_name=f"{os.path.splitext(uploaded_file.name)[0]}_extracted.md",
-                    mime="text/markdown",
-                    use_container_width=True
-                )
-            with d_col2:
-                st.download_button(
-                    label="📄 Download Plain Text (.txt)",
-                    data=st.session_state["edited_text"],
-                    file_name=f"{os.path.splitext(uploaded_file.name)[0]}_extracted.txt",
-                    mime="text/plain",
-                    use_container_width=True
-                )
-            with d_col3:
-                if st.button("🔄 Reset Edits to Original OCR", use_container_width=True):
-                    st.session_state["edited_text"] = st.session_state["ocr_text"]
-                    st.rerun()
-
-            # STEP 4: STRUCTURED EXTRACTION
-            st.divider()
-            st.subheader("🤖 Step 4: Extract Structured Report with Qwen 2.5 Coder 3B")
-            st.caption(
-                "Converts OCR text into strict canonical JSON (Objective + P1..P10 sections). "
-                "Never invents or hallucinates missing sections."
-            )
-
-            c_s1, c_s2, c_s3 = st.columns([1, 1, 1])
-            with c_s1:
-                student_id_input = st.text_input(
-                    "Student ID",
-                    value=os.path.splitext(uploaded_file.name)[0].split("_")[0],
-                    help="Identifier for the student (used for output JSON filename)"
-                )
-            with c_s2:
-                section_id_input = st.selectbox(
-                    "Section ID",
-                    options=["SEC1", "SEC2", "SEC3", "SEC4", "SEC5", "SEC6"],
-                    index=0,
-                    help="Section identifier (e.g. SEC1..SEC6)"
-                )
-            with c_s3:
-                week_id_input = st.text_input(
-                    "Week ID",
-                    value="week-01",
-                    help="Lab session week identifier"
-                )
-
-            extract_struct_btn = st.button(
-                "⚡ Extract Structured JSON",
-                type="primary",
-                use_container_width=True,
-                key="btn_run_structured_ext"
-            )
-
-            if extract_struct_btn:
-                if not ollama_status["ok"]:
-                    st.error(f"Cannot connect to Ollama at {ollama_url}. Please ensure Ollama is running.")
-                    st.stop()
-
-                text_to_extract = st.session_state["edited_text"].strip()
-                if not text_to_extract:
-                    st.warning("Cannot extract from empty text.")
-                    st.stop()
-
-                with st.spinner(f"Extracting structured observation data with {selected_model}..."):
-                    t_ext_start = time.perf_counter()
-                    ext_result = extract_observation_report(
-                        report_text=text_to_extract,
-                        base_url=ollama_url,
-                        model=selected_model,
-                        temperature=temperature,
-                        page_breakdown=st.session_state["ocr_meta"].get("page_breakdown", [])
+                    col_dl1, col_dl2 = st.columns(2)
+                    col_dl1.download_button(
+                        label=f"📥 Download {eval_sid}_ollama_evaluation.md",
+                        data=ollama_eval.get("full_report_markdown", ""),
+                        file_name=f"{eval_sid}_ollama_evaluation.md",
+                        mime="text/markdown",
+                        use_container_width=True
                     )
-                    t_ext_total = time.perf_counter() - t_ext_start
-
-                st.session_state["structured_extraction"] = ext_result
-
-                # Assemble complete canonical student report
-                report = StudentObservationReport(
-                    student_id=student_id_input.strip() or "student_01",
-                    section_id=section_id_input.strip() or "SEC1",
-                    week_id=week_id_input.strip() or "week-01",
-                    status="completed",
-                    source=SourceMeta(
-                        filename=uploaded_file.name,
-                        num_pages=st.session_state["ocr_meta"].get("num_pages", 1)
-                    ),
-                    ocr=OcrResult(
-                        status="success",
-                        text=st.session_state["ocr_text"],
-                        num_pages=st.session_state["ocr_meta"].get("num_pages", 1),
-                        page_breakdown=st.session_state["ocr_meta"].get("page_breakdown", []),
-                        device=st.session_state["ocr_meta"].get("device", "gpu:0"),
-                        paddle_version=st.session_state["ocr_meta"].get("paddle_version", "Unknown"),
-                        total_time=st.session_state["ocr_meta"].get("total_time", 0.0)
-                    ),
-                    extraction=ext_result
-                )
-                st.session_state["single_student_report"] = report
-                st.success(f"✅ Structured extraction complete in {t_ext_total:.2f}s!")
-
-            # STEP 5: REVIEW STRUCTURED OBSERVATION REPORT
-            if st.session_state.get("structured_extraction") and st.session_state.get("single_student_report"):
-                st.divider()
-                st.subheader("📊 Step 5: Detected Report Programs & Validation")
-
-                report = st.session_state["single_student_report"]
-                ext = report.extraction
-                report_entries = ext.get_report_entries()
-
-                c1, c2, c3 = st.columns(3)
-                with c1:
-                    st.metric("Extraction Status", ext.status.upper())
-                with c2:
-                    st.metric("Report Entries Documented", f"{len(report_entries)} program(s)")
-                with c3:
-                    has_obj = "Present" if ext.objective_of_lab else "Not Detected"
-                    st.metric("Lab Objective", has_obj)
-
-                if report_entries:
-                    st.markdown("**Detected Report Entries (`R1, R2...`):**")
-                    badge_cols = st.columns(min(len(report_entries), 6))
-                    for idx, entry in enumerate(report_entries):
-                        with badge_cols[idx % len(badge_cols)]:
-                            written_tag = f" (Prog {entry.student_written_program_number})" if entry.student_written_program_number else ""
-                            st.success(f"**{entry.report_program_id}**{written_tag}\n\n{entry.program_title[:25]}")
-
-                if ext.objective_of_lab:
-                    with st.expander("🎯 Extracted Objective of Lab", expanded=False):
-                        st.write(ext.objective_of_lab)
-
-                if ext.conclusion:
-                    with st.expander("📝 Extracted Lab Conclusion", expanded=False):
-                        st.write(ext.conclusion)
-
-                # Detailed Report Entry Cards
-                with st.expander(f"🔍 Detailed Report Breakdown ({len(report_entries)} Documented Programs)", expanded=False):
-                    for entry in report_entries:
-                        pages_info = f"(Pages: {', '.join(map(str, entry.source_pages))})" if entry.source_pages else ""
-                        title = f"**{entry.report_program_id}**: {entry.program_title} {pages_info}"
-                        with st.expander(title, expanded=False):
-                            st.write("**Problem Understanding:**")
-                            st.write(entry.problem_understanding or "_Not provided (null)_")
-
-                            st.write("**Logic / Approach Used:**")
-                            st.write(entry.logic_approach or "_Not provided (null)_")
-
-                            st.write("**Important Variables:**")
-                            if entry.important_variables:
-                                var_data = [{"Variable": v.variable, "Purpose": v.purpose} for v in entry.important_variables]
-                                st.table(var_data)
-                            else:
-                                st.write("_None listed (empty)_")
-
-                            st.write("**What I Observed:**")
-                            st.write(entry.what_i_observed or "_Not provided (null)_")
-
-                with st.expander("📄 View & Download Canonical JSON"):
-                    json_str = report.model_dump_json(indent=2)
-                    st.download_button(
-                        label=f"📥 Download {report.student_id}.json",
-                        data=json_str,
-                        file_name=f"{report.student_id}.json",
+                    col_dl2.download_button(
+                        label=f"📄 Download {eval_sid}_ollama_report.json",
+                        data=json.dumps(ollama_eval, indent=2),
+                        file_name=f"{eval_sid}_ollama_report.json",
                         mime="application/json",
                         use_container_width=True
                     )
-                    st.code(json_str, language="json")
-
-            # STEP 6: UPLOAD STUDENT CODE FILES (ALL 17 FILES)
-            st.divider()
-            st.subheader("💻 Step 6: Ingest Student Source Code Files")
-            st.caption(
-                "Supply ALL student code files (e.g. all 17 programs for the lab session). "
-                "The evaluator will perform static analysis across all files (NO execution, NO testcase pass claims)."
-            )
-
-            c_code1, c_code2 = st.columns([3, 2])
-            with c_code1:
-                uploaded_code_files = st.file_uploader(
-                    "Upload Code Files (.c, .cpp, .py, .json, .zip)",
-                    type=["c", "cpp", "py", "json", "zip", "txt"],
-                    accept_multiple_files=True,
-                    key="student_code_files_uploader"
-                )
-            with c_code2:
-                st.markdown("**Quick Preset (Sample Student Submission):**")
-                if st.button("📂 Load Week 4 Code (17 Files from student_N241003_week_04.json)", use_container_width=True):
-                    sample_json_path = os.path.join(os.path.dirname(__file__), "student_N241003_week_04.json")
-                    if os.path.exists(sample_json_path):
-                        with open(sample_json_path, "r", encoding="utf-8") as f:
-                            sample_data = json.load(f)
-                        st.session_state["student_code_collection"] = ingest_student_code_from_json_or_files(sample_data)
-                        st.success(f"✓ Loaded {len(st.session_state['student_code_collection'].problems)} code files for N241003!")
-                        st.rerun()
-
-            if uploaded_code_files:
-                # Handle single JSON file or multiple code files
-                if len(uploaded_code_files) == 1 and uploaded_code_files[0].name.lower().endswith(".json"):
-                    content_str = uploaded_code_files[0].getvalue().decode("utf-8", errors="replace")
-                    st.session_state["student_code_collection"] = ingest_student_code_from_json_or_files(content_str)
                 else:
-                    st.session_state["student_code_collection"] = ingest_student_code_from_json_or_files(uploaded_code_files)
+                    st.info("No Ollama evaluation generated yet for this student.")
 
-            code_coll: Optional[StudentCodeCollection] = st.session_state.get("student_code_collection")
-            if code_coll and code_coll.problems:
-                st.success(f"✓ **{len(code_coll.problems)} Code Files Active** for Student `{code_coll.student_id or 'Unknown'}` ({code_coll.week or 'week-04'}).")
+            with r_tab_gemini:
+                if gemini_eval and gemini_eval.get("full_report_markdown"):
+                    st.write(f"### ♊ Google Gemini Evaluation Report (`{gemini_eval.get('model_name', 'gemini-3.6-flash')}`)")
+                    st.metric("Gemini Recommended Score", f"{gemini_eval.get('recommended_score', 0.0):.1f} / 10.0", f"Grade: {gemini_eval.get('grade', '—')}")
+                    st.markdown(gemini_eval.get("full_report_markdown", ""))
 
-                # Code Inspector
-                with st.expander(f"🔍 Static Code Inspector ({len(code_coll.problems)} Files)", expanded=False):
-                    file_options = [f"{p.problem_id}: {p.problem_title} ({p.source_file or 'file'})" for p in code_coll.problems]
-                    selected_file_idx = st.selectbox("Select file to inspect:", range(len(file_options)), format_func=lambda i: file_options[i])
-                    sel_p = code_coll.problems[selected_file_idx]
-
-                    col_ci1, col_ci2 = st.columns([3, 1])
-                    with col_ci1:
-                        st.code(sel_p.source_code, language="c")
-                    with col_ci2:
-                        st.write(f"**Problem:** `{sel_p.problem_id}`")
-                        st.write(f"**Filename:** `{sel_p.source_file}`")
-                        st.write(f"**Lines:** `{len(sel_p.source_code.splitlines())}`")
-                        st.write(f"**Chars:** `{len(sel_p.source_code)}`")
-            else:
-                st.info("👆 Upload code files or click 'Load Week 4 Code' to provide student code for evaluation.")
-
-            # STEP 7: PROGRAM MATCHING (OBSERVATION REPORT ↔ STUDENT CODE FILES)
-            st.divider()
-            st.subheader("🔗 Step 7: Program Matching (Observation Report ↔ Student Code Files)")
-            st.caption(
-                "Matches each detected report entry (R1, R2...) directly to its corresponding student code file (.c program). "
-                "In laboratory sessions, students are only asked to document a subset of their programs in the report; unselected code files are not penalized."
-            )
-
-            current_report = st.session_state.get("single_student_report")
-            ext_rep = current_report.extraction if current_report else None
-            rep_entries = ext_rep.get_report_entries() if ext_rep else []
-
-            # Compute semantic matches directly between report entries and student code files
-            if rep_entries and code_coll and code_coll.problems:
-                computed_matches = match_report_programs_to_questions(
-                    extracted_report=ext_rep,
-                    question_bank=None,
-                    student_code=code_coll,
-                    matched_threshold=DEFAULT_MATCHED_THRESHOLD,
-                    review_threshold=DEFAULT_REVIEW_THRESHOLD
-                )
-                st.session_state["question_matches"] = computed_matches
-
-            matches: List[QuestionMatch] = st.session_state.get("question_matches", [])
-
-            # Summary Counters
-            matched_count = sum(1 for m in matches if m.match_status == "matched")
-            review_count = sum(1 for m in matches if m.match_status == "needs_review")
-            total_code_q = len(code_coll.problems) if code_coll and code_coll.problems else 0
-
-            sm1, sm2, sm3 = st.columns(3)
-            with sm1:
-                st.metric("Total Submitted Code Files (.c)", total_code_q)
-            with sm2:
-                st.metric("Programs Documented in Report", len(rep_entries))
-            with sm3:
-                st.metric("Programs Successfully Matched", f"{matched_count} / {len(rep_entries)}")
-
-            if matches and code_coll and code_coll.problems:
-                st.markdown("**Program Matching Results & Faculty Review:**")
-                code_options = ["None (Unmatched)"] + [
-                    f"{p.problem_id}: {p.problem_title} ({p.source_file or 'file'})"
-                    for p in code_coll.problems
-                ]
-
-                for m_idx, match in enumerate(matches):
-                    status_color = "🟢" if match.match_status == "matched" else ("🟡" if match.match_status == "needs_review" else "🔴")
-                    with st.expander(f"{status_color} **{match.report_program_id}**: {match.report_program_title or 'Untitled'} ➔ {match.matched_problem_id or 'Unmatched'} (Confidence: {int(match.match_confidence*100)}%)", expanded=(match.match_status != "matched")):
-                        col_m_info, col_m_edit = st.columns([3, 2])
-                        with col_m_info:
-                            st.write(f"**Report Title:** {match.report_program_title}")
-                            st.write(f"**Matched Code Program:** {match.matched_problem_id} — {match.matched_problem_title}")
-                            st.write(f"**Match Status:** `{match.match_status.upper()}` | **Confidence:** `{match.match_confidence:.2f}`")
-                            if match.evidence:
-                                st.caption("Evidence: " + "; ".join(match.evidence))
-                        with col_m_edit:
-                            # Faculty override dropdown mapping to code files
-                            curr_idx = 0
-                            if match.matched_problem_id:
-                                for opt_i, opt_p in enumerate(code_coll.problems):
-                                    if opt_p.problem_id == match.matched_problem_id or f"P{opt_p.problem_number}" == match.matched_problem_id:
-                                        curr_idx = opt_i + 1
-                                        break
-                            curr_idx = min(curr_idx, len(code_options) - 1)
-                            new_sel = st.selectbox(
-                                f"Override Program for {match.report_program_id}:",
-                                options=range(len(code_options)),
-                                index=curr_idx,
-                                format_func=lambda i: code_options[i],
-                                key=f"match_override_{match.report_program_id}_{m_idx}"
-                            )
-                            if new_sel > 0:
-                                chosen_p = code_coll.problems[new_sel - 1]
-                                match.matched_problem_id = chosen_p.problem_id or f"P{chosen_p.problem_number}"
-                                match.matched_problem_title = chosen_p.problem_title or chosen_p.source_file
-                                match.match_status = "matched"
-                            elif new_sel == 0:
-                                match.matched_problem_id = None
-                                match.matched_problem_title = None
-                                match.match_status = "unmatched"
-
-            # STEP 8: UNIFIED 5-DIMENSION HOLISTIC EVALUATION
-            st.divider()
-            st.subheader("🚀 Step 8: Unified 5-Dimension Holistic Evaluation (10 Marks / 100 Marks)")
-            st.caption(
-                "Static reasoning across ALL submitted code files (.c) + Report OCR text. "
-                "Calculates deterministic scores: D1 (2m) + D2 (2m) = 40 Programming, D3 (2m) = 20 Report, "
-                "D4 (2m) = 20 Conceptual, D5 (2m) = 20 Novelty & Presentation Readiness."
-            )
-
-            ready_for_eval = bool(
-                st.session_state.get("single_student_report") and
-                code_coll and code_coll.problems
-            )
-
-            if not ready_for_eval:
-                st.warning("⚠️ Prerequisites for Unified Evaluation: (1) Observation report extracted, (2) Student code files (.c files) loaded.")
-
-            c_hbtn1, c_hbtn2 = st.columns([2, 1])
-            with c_hbtn1:
-                run_holistic_btn = st.button(
-                    "🚀 Run Unified 5-Dimension Holistic Evaluation",
-                    type="primary",
-                    disabled=not ready_for_eval,
-                    use_container_width=True,
-                    key="btn_run_holistic_eval"
-                )
-            with c_hbtn2:
-                if st.session_state.get("holistic_markdown"):
-                    if st.button("🔄 Clear Evaluation", use_container_width=True, key="btn_clear_holistic"):
-                        st.session_state["holistic_markdown"] = ""
-                        st.session_state["holistic_evaluation_result"] = None
-                        st.session_state["evaluation_result"] = None
-                        st.rerun()
-
-            if run_holistic_btn:
-                # Clear previous evaluation to prevent stale state bleed
-                st.session_state["holistic_evaluation_result"] = None
-                st.session_state["evaluation_result"] = None
-                st.session_state["holistic_markdown"] = ""
-                with st.spinner("Conducting Unified 5-Dimension Holistic Static Evaluation..."):
-                    raw_ocr_source = st.session_state.get("edited_text", "") or st.session_state.get("ocr_text", "")
-                    holistic_res = evaluate_holistic_student(
-                        report_text=raw_ocr_source,
-                        extracted_report=ext_rep,
-                        student_code=code_coll,
-                        question_context=None,
-                        matches=st.session_state.get("question_matches", []),
-                        base_url=ollama_url,
-                        model=selected_model,
-                        temperature=temperature
-                    )
-                    st.session_state["holistic_evaluation_result"] = holistic_res
-                    st.session_state["evaluation_result"] = holistic_res
-                    st.session_state["holistic_markdown"] = render_holistic_evaluation_markdown(
-                        holistic_res,
-                        matches=st.session_state.get("question_matches", [])
-                    )
-
-            # RENDER SCORECARD & DETAILED SECTIONS
-            if st.session_state.get("holistic_evaluation_result"):
-                h_res: HolisticEvaluationResult = st.session_state["holistic_evaluation_result"]
-
-                # 1. High-Level Score Cards
-                st.markdown("### 🏆 Evaluation Scoreboard")
-                sc1, sc2, sc3, sc4, sc5 = st.columns(5)
-                with sc1:
-                    st.metric("Programming (D1+D2)", f"{h_res.programming_score_40:.1f} / 40", help="Static code inspection across all files")
-                with sc2:
-                    st.metric("Report (D3)", f"{h_res.report_score_20:.1f} / 20", help="Quality of documented report entries")
-                with sc3:
-                    st.metric("Conceptual (D4)", f"{h_res.conceptual_score_20:.1f} / 20", help="Concept grasp & Code ↔ Report consistency")
-                with sc4:
-                    st.metric("Novelty (D5)", f"{h_res.novelty_score_20:.1f} / 20", help="Algorithmic innovation & Presentation readiness")
-                with sc5:
-                    st.metric("TOTAL SCORE", f"{h_res.total_score_10:.2f} / 10", delta=f"{h_res.total_score_100:.1f} / 100")
-
-                # 2. Five Dimensions Cards
-                st.markdown("#### 📋 5-Dimension Marks Breakdown")
-                d_cols = st.columns(5)
-                for idx, d in enumerate(h_res.dimensions):
-                    with d_cols[idx]:
-                        st.info(f"**{d.dimension}**\n\n### {d.score:.2f} / 2.0\n\n*{d.name}*")
-
-                # 3. Dedicated Section: D5 Interesting Logic & Innovation
-                st.markdown("### ⭐ Interesting Logic & Innovation (D5 Highlights)")
-                if h_res.interesting_logic:
-                    for item in h_res.interesting_logic:
-                        with st.expander(f"✨ Problem {item.problem} — {item.title} (Presentation Potential: {item.presentation_potential})", expanded=True):
-                            st.write(f"**Interesting Logic:** {item.interesting_logic}")
-                            st.write(f"**Why It Is Interesting:** {item.why_interesting}")
-                            if item.suggested_explanation:
-                                st.write(f"**Suggested 300s Presentation Explanation:** {item.suggested_explanation}")
-                            if item.evidence:
-                                st.code(item.evidence, language="c")
-                else:
-                    st.info("Standard procedural implementation with straightforward logic.")
-
-                # 4. Dedicated Section: D4 Code <-> Report Consistency
-                st.markdown("### 🔗 Code ↔ Report Consistency (D4 Audit)")
-                if h_res.code_report_consistency:
-                    for item in h_res.code_report_consistency:
-                        badge = "🟢 Supported" if item.claim_type == "supported" else ("🟡 Inconsistent" if item.claim_type == "inconsistent" else "🔴 Unsupported")
-                        st.markdown(f"- **{item.problem} ({item.report_program_id}):** {badge} — *Claim:* \"{item.report_claim}\" | *Code Reality:* {item.code_reality} | *Assessment:* {item.assessment}")
-                else:
-                    st.caption("No cross-source claims requiring verification were identified.")
-
-                # 5. Dedicated Section: Presentation Readiness (300s Voice Preparation)
-                if h_res.presentation_readiness:
-                    with st.expander("🎙️ Presentation Highlights (300s / 5-min Voice Preparation)", expanded=True):
-                        pr = h_res.presentation_readiness
-                        if pr.interesting_topics:
-                            st.write(f"**Recommended Topics for Presentation:** {', '.join(pr.interesting_topics)}")
-                        if pr.recommended_explanation_points:
-                            st.write("**Key Explanation Points:**")
-                            for pt in pr.recommended_explanation_points:
-                                st.write(f"- {pt}")
-                        if pr.possible_faculty_questions:
-                            st.write("**Anticipated Faculty Q&A Questions:**")
-                            for q in pr.possible_faculty_questions:
-                                st.write(f"- ❓ {q}")
-
-                # 6. Qualitative Feedback & Executive Summary
-                with st.expander("💡 Qualitative Feedback & Recommendations", expanded=False):
-                    st.write("**Demonstrated Strengths:**")
-                    for s in h_res.strengths:
-                        st.write(f"- ✓ {s}")
-                    st.write("**Areas for Improvement:**")
-                    for imp in h_res.improvement_areas:
-                        st.write(f"- ⚠️ {imp}")
-                    if h_res.overall_summary:
-                        st.write(f"**Executive Summary:** {h_res.overall_summary}")
-
-                # 7. Download Markdown Report
-                eval_md = st.session_state.get("holistic_markdown", "")
-                st.download_button(
-                    label="📥 Download Unified Evaluation Report (.md)",
-                    data=eval_md,
-                    file_name=f"{h_res.student_id or 'student'}_{h_res.week_id or 'week'}_unified_evaluation.md",
-                    mime="text/markdown",
-                    use_container_width=True,
-                    key="btn_download_holistic_md"
-                )
-
-
-
-
-# ============================================================
-# TAB 2: SECTION-WISE BATCH EXTRACTION WORKFLOW (SEC1–SEC6)
-# ============================================================
-
-with tab_batch:
-    st.subheader("📦 Section-Wise Batch Observation Report Extraction")
-    st.markdown(
-        """
-        Upload a section cohort ZIP archive (e.g. `SEC1.zip`, `SEC2.zip`) containing student observation reports:
-        ```text
-        SEC1.zip
-        ├── 22001/observation.pdf
-        ├── 22002/observation.pdf
-        └── ...
-        ```
-        - **Section & Week Isolation:** Output stored cleanly under `output/sections/<week_id>/<section_id>/`.
-        - **Sequential Execution:** Strictly sequential OCR (concurrency = 1) and LLM extraction (concurrency = 1).
-        - **Distinct Resume vs Retry:** Resume skips completed students; Retry Failed processes only failed students.
-        - **Complete Section JSON:** Download one master JSON file containing all students in the section.
-        """
-    )
-
-    b_col1, b_col2, b_col3 = st.columns([1, 1, 1])
-    with b_col1:
-        batch_week_id = st.text_input(
-            "Week Identifier",
-            value="week-01",
-            help="Lab session week identifier (e.g. week-01, week-02)"
-        )
-    with b_col2:
-        batch_section_id = st.selectbox(
-            "Section Identifier",
-            options=["SEC1", "SEC2", "SEC3", "SEC4", "SEC5", "SEC6"],
-            index=0,
-            help="Select student section (SEC1 through SEC6)"
-        )
-    with b_col3:
-        batch_out_dir = st.text_input(
-            "Base Output Directory",
-            value="output/sections",
-            help="Base directory where section folders are created"
-        )
-
-    batch_file = st.file_uploader(
-        f"Upload {batch_section_id} ZIP Archive (Max 500 MB)",
-        type=["zip"],
-        key="batch_zip_uploader"
-    )
-
-    if batch_file is not None:
-        batch_id = f"{batch_file.name}_{batch_file.size}_{batch_section_id}_{batch_week_id}"
-        # If new zip uploaded or section/week changed, unpack into clean temp folder
-        if st.session_state["batch_zip_id"] != batch_id:
-            st.session_state["batch_zip_id"] = batch_id
-            temp_extract_dir = tempfile.mkdtemp(prefix=f"batch_{batch_section_id}_")
-            st.session_state["batch_extracted_dir"] = temp_extract_dir
-
-            temp_zip_path = os.path.join(temp_extract_dir, "archive.zip")
-            with open(temp_zip_path, "wb") as f:
-                f.write(batch_file.getbuffer())
-
-            try:
-                validate_and_extract_zip(temp_zip_path, temp_extract_dir)
-                if os.path.exists(temp_zip_path):
-                    os.remove(temp_zip_path)
-
-                discovered = discover_student_reports(temp_extract_dir)
-                st.session_state["batch_discovered"] = discovered
-                st.success(f"✅ Archive validated & extracted safely. Discovered {len(discovered)} student entries.")
-            except SecurityError as se:
-                st.error(f"❌ Security Error during ZIP extraction: {se}")
-                st.stop()
-            except Exception as e:
-                st.error(f"❌ Failed to extract ZIP: {e}")
-                st.stop()
-
-        discovered = st.session_state.get("batch_discovered", {})
-        if discovered:
-            # Pre-flight Validation Summary
-            ambiguities = [sid for sid, d in discovered.items() if d.get("error")]
-            ready_students = [sid for sid, d in discovered.items() if not d.get("error")]
-
-            st.info(
-                f"📋 **Pre-Flight Summary:** Section: **{batch_section_id}** | Week: **{batch_week_id}** | "
-                f"Students found: **{len(discovered)}** ({len(ready_students)} valid, {len(ambiguities)} flagged) | **Ready to process.**"
-            )
-
-            if ambiguities:
-                with st.expander(f"⚠️ Flagged Student Entries ({len(ambiguities)})", expanded=True):
-                    for sid in ambiguities:
-                        st.warning(f"**Student {sid}:** {discovered[sid].get('error')}")
-
-            # Initialize Section Batch Pipeline
-            pipeline = BatchPipeline(
-                week_id=batch_week_id.strip() or "week-01",
-                section_id=batch_section_id.strip() or "SEC1",
-                output_dir=batch_out_dir.strip() or "output/sections",
-                ollama_url=ollama_url,
-                model=selected_model,
-                temperature=temperature,
-                python_exe=get_paddle_python(),
-                instruction_manual=st.session_state.get("instruction_manual", ""),
-                enable_evaluation=True
-            )
-            pipeline.instruction_manual = st.session_state.get("instruction_manual", "")
-
-            # Student Extraction Scope Selector
-            st.divider()
-            st.subheader("🎯 Student Extraction Scope")
-            st.caption("Select how many or which students to extract from the batch archive (ideal for testing / checking).")
-
-            scope_col1, scope_col2 = st.columns([1, 2])
-            all_sids = sorted(list(discovered.keys()))
-
-            with scope_col1:
-                scope_mode = st.radio(
-                    "Extraction Scope:",
-                    options=[
-                        f"All Students ({len(discovered)})",
-                        "Quick Check (First N Students)",
-                        "Custom Student Selection"
-                    ],
-                    index=0,
-                    key="batch_scope_mode"
-                )
-
-            with scope_col2:
-                if scope_mode == "Quick Check (First N Students)":
-                    default_n = min(3, len(discovered))
-                    subset_count = st.slider(
-                        "Number of students to extract:",
-                        min_value=1,
-                        max_value=len(discovered),
-                        value=default_n,
-                        step=1,
-                        key="batch_subset_slider"
-                    )
-                    selected_student_ids = all_sids[:subset_count]
-                    st.info(f"Targeting first **{len(selected_student_ids)}** students: `{', '.join(selected_student_ids)}`")
-                elif scope_mode == "Custom Student Selection":
-                    selected_student_ids = st.multiselect(
-                        "Select specific students to process:",
-                        options=all_sids,
-                        default=all_sids[:min(3, len(all_sids))],
-                        key="batch_custom_multiselect"
-                    )
-                    st.info(f"Targeting **{len(selected_student_ids)}** custom selected student(s).")
-                else:
-                    selected_student_ids = all_sids
-                    st.success(f"Targeting **all {len(selected_student_ids)}** discovered students.")
-
-            eval_extracted_toggle = st.checkbox(
-                "Evaluate extracted text instead of raw OCR (recommended)",
-                value=True,
-                help="When enabled, Qwen evaluates against structured student report extractions rather than unsegmented OCR text."
-            )
-            pipeline.evaluate_extracted_text = eval_extracted_toggle
-
-            # Execution controls: Distinct Start, Resume, Retry Failed, and Rerun Evaluation
-            st.divider()
-            c_run1, c_run2, c_run3, c_run4 = st.columns([1, 1, 1, 1.2])
-            with c_run1:
-                btn_start_batch = st.button(f"🚀 Start Batch ({len(selected_student_ids)} students)", type="primary", use_container_width=True)
-            with c_run2:
-                btn_resume_batch = st.button(f"🔄 Resume Incomplete ({len(selected_student_ids)} target)", use_container_width=True)
-            with c_run3:
-                btn_retry_failed = st.button("⚠️ Retry Failed Only", use_container_width=True)
-            with c_run4:
-                btn_rerun_eval = st.button("🧠 Re-run Qwen Evaluation (Extracted)", help="Re-runs Qwen rubric evaluation directly on already-extracted student text without repeating OCR or extraction.", use_container_width=True)
-
-            # Status and live stage display containers
-            live_stage_box = st.empty()
-            progress_bar = st.progress(0.0)
-            status_text = st.empty()
-            metrics_placeholder = st.empty()
-            table_placeholder = st.empty()
-
-            def update_dashboard():
-                # Filter pipeline state to strictly the students belonging to the current discovered batch
-                students_list = [pipeline.state[sid] for sid in discovered if sid in pipeline.state]
-                total = len(discovered)
-                target_count = len(selected_student_ids)
-                completed = sum(1 for s in students_list if s.status == "completed")
-                failed = sum(1 for s in students_list if s.status == "failed")
-                in_prog = sum(1 for s in students_list if s.status in ("processing_ocr", "ocr_complete", "extracting"))
-                pending = max(0, total - completed - failed - in_prog)
-
-                pct = (completed + failed) / total if total > 0 else 0.0
-                progress_bar.progress(min(pct, 1.0))
-                status_text.write(f"**Progress for {batch_section_id} / {batch_week_id}:** {completed + failed} / {total} processed ({pct*100:.1f}%) | Target: {target_count} students")
-
-                with metrics_placeholder.container():
-                    m1, m2, m3, m4, m5 = st.columns(5)
-                    m1.metric("Total Found", total)
-                    m2.metric("🎯 Target Run", target_count)
-                    m3.metric("✅ Completed", completed)
-                    m4.metric("❌ Failed", failed)
-                    m5.metric("⏳ Pending", pending)
-
-                # Student Status Table
-                table_rows = []
-                for sid, info in sorted(discovered.items()):
-                    st_entry = pipeline.state.get(sid)
-                    cur_st = st_entry.status if st_entry else "pending"
-                    err = st_entry.error if st_entry and st_entry.error else "-"
-                    in_target = sid in selected_student_ids
-                    scope_display = "🎯 Target" if in_target else "⚪ Outside"
-
-                    ocr_st = getattr(st_entry, "ocr_status", None) if st_entry else None
-                    ext_st = getattr(st_entry, "extraction_status", None) if st_entry else None
-                    eval_st = getattr(st_entry, "evaluation_status", None) if st_entry else None
-
-                    ocr_mark = "✓" if ocr_st == "completed" else ("✗" if ocr_st == "failed" else ("⏳" if ocr_st == "running" else "—"))
-                    ext_mark = "✓" if ext_st == "completed" else ("✗" if ext_st == "failed" else ("⏳" if ext_st == "running" else "—"))
-                    eval_mark = "✓" if eval_st == "completed" else ("✗" if eval_st == "failed" else ("⏳" if eval_st == "running" else "—"))
-
-                    status_display = {
-                        "completed": "✅ Completed",
-                        "processing_ocr": "⚡ Running OCR",
-                        "ocr_complete": "📑 OCR Done",
-                        "extracting": "🧠 Extracting",
-                        "evaluating": "📊 Evaluating",
-                        "failed": "❌ Failed",
-                        "pending": "⏳ Pending"
-                    }.get(cur_st, cur_st)
-
-                    table_rows.append({
-                        "Student ID": sid,
-                        "Scope": scope_display,
-                        "Status": status_display,
-                        "OCR": ocr_mark,
-                        "Extraction": ext_mark,
-                        "Evaluation": eval_mark,
-                        "Error / Details": err[:65] if err else "-"
-                    })
-
-                table_placeholder.dataframe(
-                    table_rows,
-                    use_container_width=True,
-                    height=320
-                )
-
-            # Update initial dashboard
-            update_dashboard()
-
-            # Execute Batch actions
-            if btn_start_batch or btn_resume_batch or btn_retry_failed or btn_rerun_eval:
-                if not ollama_status["ok"]:
-                    st.error(f"Cannot connect to Ollama at {ollama_url}. Please ensure Ollama is online.")
-                    st.stop()
-
-                def on_progress(entry):
-                    stage_name = (
-                        "OCR (GPU:0)" if entry.stage == "ocr"
-                        else ("Structured extraction (Qwen)" if entry.stage == "extraction"
-                        else ("Rubric Evaluation (Qwen)" if entry.stage == "evaluation"
-                        else (entry.stage or "Processing")))
-                    )
-                    live_stage_box.info(f"📍 **Currently processing:** Student `{entry.student_id}` | **Stage:** `{stage_name}`")
-                    update_dashboard()
-
-                if btn_rerun_eval:
-                    status_text.info(f"⏳ Re-running Qwen evaluation on extracted text for {batch_section_id} ({len(selected_student_ids)} students targeted)...")
-                    manifest = pipeline.rerun_evaluations_on_extracted(discovered_students=discovered, selected_student_ids=selected_student_ids, progress_cb=on_progress)
-                elif btn_retry_failed:
-                    status_text.info(f"⏳ Running Retry Failed for {batch_section_id}... (Only processing failed students)")
-                    manifest = pipeline.retry_failed(discovered_students=discovered, selected_student_ids=selected_student_ids, progress_cb=on_progress)
-                else:
-                    status_text.info(f"⏳ Running Section Batch for {batch_section_id} ({len(selected_student_ids)} students targeted)...")
-                    manifest = pipeline.resume(discovered_students=discovered, selected_student_ids=selected_student_ids, progress_cb=on_progress)
-
-                live_stage_box.empty()
-                st.session_state["batch_manifest"] = manifest
-                update_dashboard()
-                st.success(f"🎉 Processing finished for {batch_section_id}! Completed: {manifest.successful}, Failed: {manifest.failed}")
-
-            # DOWNLOADS & EXPORTS SECTION
-            st.divider()
-            st.subheader(f"📥 Section Deliverables ({batch_section_id} / {batch_week_id})")
-
-            # Always ensure complete json and summary are generated if any students exist
-            if os.path.exists(pipeline.students_dir) and os.listdir(pipeline.students_dir):
-                pipeline.build_complete_section_json()
-                pipeline.build_section_summary()
-                pipeline.create_batch_zip()
-
-            d1, d2 = st.columns(2)
-            with d1:
-                if os.path.exists(pipeline.complete_json_path):
-                    with open(pipeline.complete_json_path, "r", encoding="utf-8") as f:
-                        complete_json_bytes = f.read()
-                    st.download_button(
-                        label=f"📥 Download Complete Section JSON ({os.path.basename(pipeline.complete_json_path)})",
-                        data=complete_json_bytes,
-                        file_name=os.path.basename(pipeline.complete_json_path),
-                        mime="application/json",
-                        type="primary",
+                    col_g1, col_g2 = st.columns(2)
+                    col_g1.download_button(
+                        label=f"📥 Download {eval_sid}_gemini_evaluation.md",
+                        data=gemini_eval.get("full_report_markdown", ""),
+                        file_name=f"{eval_sid}_gemini_evaluation.md",
+                        mime="text/markdown",
                         use_container_width=True
                     )
-                if os.path.exists(pipeline.summary_path):
-                    with open(pipeline.summary_path, "r", encoding="utf-8") as f:
-                        st.download_button(
-                            label=f"📊 Download Section Summary ({os.path.basename(pipeline.summary_path)})",
-                            data=f.read(),
-                            file_name=os.path.basename(pipeline.summary_path),
-                            mime="application/json",
-                            use_container_width=True
-                        )
-
-            with d2:
-                if os.path.exists(pipeline.manifest_path):
-                    with open(pipeline.manifest_path, "r", encoding="utf-8") as f:
-                        st.download_button(
-                            label=f"📥 Download Section Manifest ({os.path.basename(pipeline.manifest_path)})",
-                            data=f.read(),
-                            file_name=os.path.basename(pipeline.manifest_path),
-                            mime="application/json",
-                            use_container_width=True
-                        )
-                if os.path.exists(pipeline.zip_path):
-                    with open(pipeline.zip_path, "rb") as f:
-                        st.download_button(
-                            label=f"📦 Download Student Reports ZIP ({os.path.basename(pipeline.zip_path)})",
-                            data=f.read(),
-                            file_name=os.path.basename(pipeline.zip_path),
-                            mime="application/zip",
-                            use_container_width=True
-                        )
-
-            # Interactive Student & Section Report Explorer
-            student_json_files = []
-            if os.path.exists(pipeline.students_dir):
-                student_json_files = sorted([os.path.splitext(f)[0] for f in os.listdir(pipeline.students_dir) if f.endswith(".json")])
-
-            if student_json_files:
-                st.divider()
-                st.subheader("🔍 Cohort Deliverables & Report Inspector")
-                
-                inspect_mode = st.radio(
-                    "Select View:",
-                    options=["👤 Single Student Report & Evaluation", "🌐 Entire Section Aggregated JSON (All Students)"],
-                    horizontal=True,
-                    key="cohort_inspect_mode"
-                )
-
-                if inspect_mode == "👤 Single Student Report & Evaluation":
-                    inspected_sid = st.selectbox("Select student to inspect:", student_json_files, key="select_inspect_student")
-                    if inspected_sid:
-                        json_path = os.path.join(pipeline.students_dir, f"{inspected_sid}.json")
-                        if os.path.exists(json_path):
-                            with open(json_path, "r", encoding="utf-8") as f:
-                                st_data = json.load(f)
-
-                            eval_text = st_data.get("evaluation")
-                            holistic_data = st_data.get("holistic_evaluation")
-
-                            if holistic_data and isinstance(holistic_data, dict):
-                                total_10 = holistic_data.get("total_score_10")
-                                total_100 = holistic_data.get("total_score_100")
-                                score_display = f"{total_10:.2f} / 10.0" if total_10 is not None else "—"
-                                if total_100 is not None:
-                                    if total_100 >= 85:
-                                        grade = "A"
-                                    elif total_100 >= 70:
-                                        grade = "B"
-                                    elif total_100 >= 55:
-                                        grade = "C"
-                                    elif total_100 >= 40:
-                                        grade = "D"
-                                    else:
-                                        grade = "F"
-                                else:
-                                    grade = "—"
-                                status_str = "Completed"
-                                m_cnt = holistic_data.get("matched_report_entries_count", 0)
-                                d_cnt = holistic_data.get("detected_report_entries_count", 0)
-                                c_cnt = holistic_data.get("total_code_problems", 0)
-                                q_cov = f"{m_cnt} / {d_cnt} Matched ({c_cnt} Code Files)"
-                            else:
-                                eval_scores = parse_evaluation_scores(eval_text) if eval_text else {}
-                                score_display = eval_scores.get("score_display", "—")
-                                grade = eval_scores.get("grade", "—")
-                                status_str = eval_scores.get("status", "—")
-                                q_cov = eval_scores.get("questions_covered", "—")
-
-                            # Summary Banner with Scores & Status
-                            st.write(f"**Student ID:** `{inspected_sid}` | **Section:** `{st_data.get('section_id', batch_section_id)}` | **Week:** `{st_data.get('week_id', batch_week_id)}`")
-                            
-                            if st_data.get("status") == "failed":
-                                err_info = st_data.get("error", {})
-                                st.error(f"❌ **Stage:** {err_info.get('stage')} | **Error:** {err_info.get('message')}")
-                            else:
-                                score_col1, score_col2, score_col3, score_col4 = st.columns(4)
-                                with score_col1:
-                                    score_col1.metric("Total Score", score_display)
-                                with score_col2:
-                                    score_col2.metric("Grade", grade)
-                                with score_col3:
-                                    score_col3.metric("Status / Verdict", status_str)
-                                with score_col4:
-                                    score_col4.metric("Questions Addressed", q_cov)
-
-                            # Student Details Tabs
-                            t_eval, t_extract, t_ocr, t_json = st.tabs([
-                                "📊 Rubric Evaluation Report",
-                                "🧠 Structured Extraction (5 Sections)",
-                                "📑 Raw OCR Scanned Text",
-                                "📄 Student JSON Payload"
-                            ])
-
-                            with t_eval:
-                                if eval_text:
-                                    st.markdown(eval_text)
-                                    st.download_button(
-                                        label=f"📥 Download {inspected_sid}_evaluation.md",
-                                        data=eval_text,
-                                        file_name=f"{inspected_sid}_evaluation.md",
-                                        mime="text/markdown",
-                                        type="primary",
-                                        key=f"dl_eval_inspect_{inspected_sid}"
-                                    )
-                                else:
-                                    st.info("ℹ️ Evaluation has not been generated for this student yet. Click 'Resume Incomplete Work' above to run evaluation.")
-
-                            with t_extract:
-                                ext_data = st_data.get("extraction", {})
-                                det_progs = ext_data.get("detected_programs", [])
-                                miss_progs = ext_data.get("missing_programs", [])
-                                det_labels = [_format_program_badge(p) for p in det_progs]
-                                miss_labels = [_format_program_badge(p) for p in miss_progs]
-                                st.success(f"**Detected Programs ({len(det_progs)}):** {', '.join(det_labels) or 'None'}")
-                                if miss_labels:
-                                    st.caption(f"**Missing Programs:** {', '.join(miss_labels)}")
-                                
-                                progs_dict = ext_data.get("programs", {})
-                                if progs_dict:
-                                    for p_code, p_info in progs_dict.items():
-                                        with st.expander(f"📌 Program {p_code} Details", expanded=False):
-                                            st.markdown(f"**Problem Understanding:** {p_info.get('problem_understanding') or 'Not provided'}")
-                                            st.markdown(f"**Logic / Approach:** {p_info.get('logic_approach') or 'Not provided'}")
-                                            v_list = p_info.get("important_variables", [])
-                                            if v_list:
-                                                st.markdown("**Important Variables:**")
-                                                var_df = []
-                                                for v in v_list:
-                                                    vname = v.get("variable", "") if isinstance(v, dict) else getattr(v, "variable", str(v))
-                                                    vpurp = v.get("purpose", "") if isinstance(v, dict) else getattr(v, "purpose", "")
-                                                    var_df.append({"Variable": vname, "Purpose": vpurp})
-                                                st.dataframe(var_df, use_container_width=True)
-                                            st.markdown(f"**What I Observed:** {p_info.get('what_i_observed') or 'Not provided'}")
-                                elif det_progs and isinstance(det_progs[0], (dict, object)):
-                                    for p_info in det_progs:
-                                        p_dict = p_info.model_dump() if hasattr(p_info, "model_dump") else (p_info if isinstance(p_info, dict) else {})
-                                        p_code = p_dict.get("report_program_id") or p_dict.get("program_id") or "Report Entry"
-                                        p_title = p_dict.get("program_title", "")
-                                        header = f"📌 {p_code}: {p_title}" if p_title else f"📌 {p_code} Details"
-                                        with st.expander(header, expanded=False):
-                                            st.markdown(f"**Problem Understanding:** {p_dict.get('problem_understanding') or 'Not provided'}")
-                                            st.markdown(f"**Logic / Approach:** {p_dict.get('logic_approach') or 'Not provided'}")
-                                            v_list = p_dict.get("important_variables", [])
-                                            if v_list:
-                                                st.markdown("**Important Variables:**")
-                                                var_df = []
-                                                for v in v_list:
-                                                    vname = v.get("variable", "") if isinstance(v, dict) else getattr(v, "variable", str(v))
-                                                    vpurp = v.get("purpose", "") if isinstance(v, dict) else getattr(v, "purpose", "")
-                                                    var_df.append({"Variable": vname, "Purpose": vpurp})
-                                                st.dataframe(var_df, use_container_width=True)
-                                            st.markdown(f"**What I Observed:** {p_dict.get('what_i_observed') or 'Not provided'}")
-
-                            with t_ocr:
-                                ocr_data = st_data.get("ocr", {})
-                                st.write(f"**Device:** `{ocr_data.get('device', 'gpu:0')}` | **Pages:** `{ocr_data.get('num_pages', 1)}` | **Total Time:** `{ocr_data.get('total_time', 0.0):.1f}s`")
-                                page_breakdown = ocr_data.get("page_breakdown", [])
-                                if page_breakdown:
-                                    for pb in page_breakdown:
-                                        with st.expander(f"📄 Page {pb.get('page', 1)} Raw Text", expanded=False):
-                                            st.markdown(pb.get("text", ""))
-                                else:
-                                    st.markdown(ocr_data.get("text", "No OCR text available."))
-
-                            with t_json:
-                                st.download_button(
-                                    label=f"📥 Download {inspected_sid}.json",
-                                    data=json.dumps(st_data, indent=2, ensure_ascii=False),
-                                    file_name=f"{inspected_sid}.json",
-                                    mime="application/json",
-                                    key=f"dl_json_inspect_{inspected_sid}"
-                                )
-                                st.json(st_data)
-
+                    col_g2.download_button(
+                        label=f"📄 Download {eval_sid}_gemini_report.json",
+                        data=json.dumps(gemini_eval, indent=2),
+                        file_name=f"{eval_sid}_gemini_report.json",
+                        mime="application/json",
+                        use_container_width=True
+                    )
                 else:
-                    # Entire Section Aggregated JSON Viewer
-                    st.write(f"#### 🌐 Aggregated Section Observation Reports (`{os.path.basename(pipeline.complete_json_path)}`)")
-                    if os.path.exists(pipeline.complete_json_path):
-                        with open(pipeline.complete_json_path, "r", encoding="utf-8") as f:
-                            complete_data = json.load(f)
+                    st.info("No Gemini evaluation generated yet for this student.")
 
-                        st.write(f"**Section ID:** `{complete_data.get('section_id', batch_section_id)}` | **Week:** `{complete_data.get('week_id', batch_week_id)}` | **Total Students:** `{complete_data.get('total_students', len(student_json_files))}` | **Successful:** `{complete_data.get('successful', 0)}` | **Failed:** `{complete_data.get('failed', 0)}`")
-                        
-                        st.download_button(
-                            label=f"📥 Download Complete Section JSON ({os.path.basename(pipeline.complete_json_path)})",
-                            data=json.dumps(complete_data, indent=2, ensure_ascii=False),
-                            file_name=os.path.basename(pipeline.complete_json_path),
-                            mime="application/json",
-                            type="primary",
-                            key="dl_entire_section_json"
-                        )
-                        st.json(complete_data)
+            with r_tab_side:
+                s_col1, s_col2 = st.columns(2)
+                with s_col1:
+                    st.write("#### 🦙 Ollama Judge")
+                    if ollama_eval:
+                        st.metric("Score", f"{ollama_eval.get('recommended_score', 0.0):.1f} / 10.0")
+                        st.write(f"**Grade:** `{ollama_eval.get('grade', '—')}` | **Status:** `{ollama_eval.get('status', '—')}`")
+                        st.write("**Key Strengths:**")
+                        for s in ollama_eval.get("strengths", []):
+                            st.write(f"- {s}")
+                        st.write("**Recommendations:**")
+                        for r in ollama_eval.get("recommendations", []):
+                            st.write(f"- {r}")
                     else:
-                        st.info("Aggregated section JSON file not found on disk yet.")
+                        st.info("Ollama report not generated.")
 
-                # ============================================================
-                # COHORT SCORES & EVALUATION SUMMARY TABLE
-                # ============================================================
-                st.divider()
-                st.subheader("📊 Cohort Scores & Evaluation Summary Table")
-                st.caption("Consolidated grading table and criteria breakdown for all students in this section.")
+                with s_col2:
+                    st.write("#### ♊ Gemini Judge")
+                    if gemini_eval:
+                        st.metric("Score", f"{gemini_eval.get('recommended_score', 0.0):.1f} / 10.0")
+                        st.write(f"**Grade:** `{gemini_eval.get('grade', '—')}` | **Status:** `{gemini_eval.get('status', '—')}`")
+                        st.write("**Key Strengths:**")
+                        for s in gemini_eval.get("strengths", []):
+                            st.write(f"- {s}")
+                        st.write("**Recommendations:**")
+                        for r in gemini_eval.get("recommendations", []):
+                            st.write(f"- {r}")
+                    else:
+                        st.info("Gemini report not generated.")
 
-                score_table_rows = []
-                total_scores_list = []
+            with r_tab_calc:
+                st.write("#### 📐 Step 3 Calculated Rubric Scorecard")
+                if calc_data:
+                    st.json(calc_data)
+                else:
+                    st.info("Calculated scorecard not available.")
 
-                for sid in student_json_files:
-                    j_path = os.path.join(pipeline.students_dir, f"{sid}.json")
-                    if os.path.exists(j_path):
-                        try:
-                            with open(j_path, "r", encoding="utf-8") as f:
-                                s_data = json.load(f)
-                            e_text = s_data.get("evaluation", "")
-                            e_sc = parse_evaluation_scores(e_text) if e_text else {}
-                            if e_sc.get("total_score") is not None:
-                                total_scores_list.append(e_sc["total_score"])
-                            
-                            det_p = s_data.get("extraction", {}).get("detected_programs", [])
-                            det_labels = [_format_program_badge(p) for p in det_p]
-                            det_p_str = f"{len(det_p)} ({', '.join(det_labels[:6])}{'...' if len(det_p) > 6 else ''})" if det_p else "—"
+            with r_tab_ocr:
+                st.write("#### 📑 Step 2 Raw OCR Text")
+                if ocr_data and ocr_data.get("text"):
+                    st.text_area("OCR Text", value=ocr_data.get("text", ""), height=350, key=f"ocr_show_{eval_sid}")
+                else:
+                    st.info("No OCR text available.")
 
-                            score_table_rows.append({
-                                "Student ID": sid,
-                                "Total Score": e_sc.get("score_display", "—"),
-                                "Grade": e_sc.get("grade", "—"),
-                                "Verdict / Status": e_sc.get("status", "—"),
-                                "Questions Addressed": e_sc.get("questions_covered", "—"),
-                                "Objective (/2)": e_sc.get("objective", "—"),
-                                "Problem Understanding (/2)": e_sc.get("problem_understanding", "—"),
-                                "Logic / Approach (/2)": e_sc.get("logic_approach", "—"),
-                                "Variables Table (/2)": e_sc.get("variables_table", "—"),
-                                "What I Observed (/2)": e_sc.get("what_i_observed", "—"),
-                                "Detected Programs": det_p_str
-                            })
-                        except Exception:
-                            pass
+        # ============================================================
+        # SECTION DOWNLOAD CENTER
+        # ============================================================
+        st.divider()
+        st.write("### 📦 Section Batch Download Center")
 
-                if score_table_rows:
-                    # Cohort Metrics Row
-                    c_m1, c_m2, c_m3, c_m4 = st.columns(4)
-                    evaluated_count = len(total_scores_list)
-                    avg_score = sum(total_scores_list) / evaluated_count if evaluated_count > 0 else 0.0
-                    approved_count = sum(1 for r in score_table_rows if "Approved" in r.get("Verdict / Status", ""))
-                    top_score = max(total_scores_list) if total_scores_list else 0.0
+        # 1. Dedicated Overall Section JSON Downloads (Separate Ollama & Gemini)
+        st.write("#### 📄 Overall Section JSON Downloads (Model-Specific)")
+        j_col1, j_col2 = st.columns(2)
 
-                    c_m1.metric("Evaluated Students", f"{evaluated_count} / {len(student_json_files)}")
-                    c_m2.metric("Cohort Average Score", f"{avg_score:.1f} / 10.0" if evaluated_count > 0 else "—")
-                    c_m3.metric("Approved Students", f"{approved_count} / {len(student_json_files)}")
-                    c_m4.metric("Highest Score", f"{top_score:.1f} / 10.0" if evaluated_count > 0 else "—")
+        with j_col1:
+            ollama_sec_json = os.path.join(pipeline.batch_output_dir, f"{pipeline.section_id or 'SEC1'}_{pipeline.week_id}_ollama_evaluations.json")
+            if not os.path.exists(ollama_sec_json) and hasattr(pipeline, "build_provider_section_json"):
+                try:
+                    pipeline.build_provider_section_json("ollama")
+                except Exception:
+                    pass
+            if os.path.exists(ollama_sec_json):
+                with open(ollama_sec_json, "r", encoding="utf-8") as f:
+                    o_sec_data = json.load(f)
+                num_evals = o_sec_data.get("evaluated_students", len(o_sec_data.get("students", {})))
+                st.download_button(
+                    label=f"🦙 Download Overall Ollama Section JSON ({num_evals} students)",
+                    data=json.dumps(o_sec_data, indent=2),
+                    file_name=os.path.basename(ollama_sec_json),
+                    mime="application/json",
+                    use_container_width=True
+                )
+            else:
+                st.caption("Ollama section JSON not generated yet.")
 
-                    score_df = pd.DataFrame(score_table_rows)
-                    st.dataframe(score_df, use_container_width=True)
+        with j_col2:
+            gemini_sec_json = os.path.join(pipeline.batch_output_dir, f"{pipeline.section_id or 'SEC1'}_{pipeline.week_id}_gemini_evaluations.json")
+            if not os.path.exists(gemini_sec_json) and hasattr(pipeline, "build_provider_section_json"):
+                try:
+                    pipeline.build_provider_section_json("gemini")
+                except Exception:
+                    pass
+            if os.path.exists(gemini_sec_json):
+                with open(gemini_sec_json, "r", encoding="utf-8") as f:
+                    g_sec_data = json.load(f)
+                num_evals = g_sec_data.get("evaluated_students", len(g_sec_data.get("students", {})))
+                st.download_button(
+                    label=f"♊ Download Overall Gemini Section JSON ({num_evals} students)",
+                    data=json.dumps(g_sec_data, indent=2),
+                    file_name=os.path.basename(gemini_sec_json),
+                    mime="application/json",
+                    use_container_width=True
+                )
+            else:
+                st.caption("Gemini section JSON not generated yet.")
 
-                    csv_data = score_df.to_csv(index=False).encode("utf-8")
+        # 2. ZIP Archives and Aggregated Reports
+        st.write("#### 📦 Report ZIP Archives & Complete Aggregates")
+        dl_col1, dl_col2, dl_col3 = st.columns(3)
+
+        with dl_col1:
+            ollama_zip_path = os.path.join(pipeline.batch_output_dir, f"{pipeline.section_id or 'SEC1'}_{pipeline.week_id}_ollama_reports.zip")
+            if os.path.exists(ollama_zip_path):
+                with open(ollama_zip_path, "rb") as f:
                     st.download_button(
-                        label="📥 Download Cohort Scores Summary (CSV)",
-                        data=csv_data,
-                        file_name=f"{batch_section_id}_{batch_week_id}_scores_summary.csv",
-                        mime="text/csv",
-                        type="primary",
-                        key="dl_cohort_scores_csv"
+                        label="📦 Download All Ollama Reports (.zip)",
+                        data=f.read(),
+                        file_name=os.path.basename(ollama_zip_path),
+                        mime="application/zip",
+                        use_container_width=True
                     )
+            else:
+                st.caption("Ollama reports zip not generated yet.")
 
+        with dl_col2:
+            gemini_zip_path = os.path.join(pipeline.batch_output_dir, f"{pipeline.section_id or 'SEC1'}_{pipeline.week_id}_gemini_reports.zip")
+            if os.path.exists(gemini_zip_path):
+                with open(gemini_zip_path, "rb") as f:
+                    st.download_button(
+                        label="📦 Download All Gemini Reports (.zip)",
+                        data=f.read(),
+                        file_name=os.path.basename(gemini_zip_path),
+                        mime="application/zip",
+                        use_container_width=True
+                    )
+            else:
+                st.caption("Gemini reports zip not generated yet.")
 
-# ============================================================
-# DIAGNOSTICS FOOTER
-# ============================================================
-
-if st.session_state.get("debug_stdout"):
-    with st.expander("🔧 Diagnostics & Raw Worker Logs"):
-        st.code(st.session_state["debug_stdout"], language="text")
-
-st.divider()
-st.caption(
-    "PaddleOCR-VL 1.6 • PyMuPDF • Ollama Qwen 2.5 Coder 3B • NVIDIA RTX 4050 6GB • Concurrency: OCR=1, LLM=1 • Sections 1–6"
-)
+        with dl_col3:
+            if os.path.exists(pipeline.complete_json_path):
+                with open(pipeline.complete_json_path, "r", encoding="utf-8") as f:
+                    comp_data = json.load(f)
+                st.download_button(
+                    label="📄 Download Section Aggregated JSON",
+                    data=json.dumps(comp_data, indent=2),
+                    file_name=os.path.basename(pipeline.complete_json_path),
+                    mime="application/json",
+                    use_container_width=True
+                )
+            else:
+                st.caption("Complete aggregated JSON not built yet.")

@@ -14,6 +14,7 @@ import zipfile
 import tempfile
 import subprocess
 import re
+import io
 from typing import List, Dict, Any, Optional, Callable, Tuple, Union
 from datetime import datetime
 import pymupdf
@@ -30,6 +31,8 @@ from schemas import (
     BatchStudentStatus,
     BatchManifest,
     HolisticEvaluationResult,
+    CalculatedScore,
+    LLMJudgeEvaluation,
 )
 from extractor import extract_observation_report, DEFAULT_OLLAMA_URL, DEFAULT_MODEL
 from verifier import (
@@ -37,6 +40,9 @@ from verifier import (
     format_extraction_for_evaluation,
     parse_evaluation_scores,
     find_student_code,
+    calculate_deterministic_score,
+    evaluate_with_ollama,
+    evaluate_with_gemini,
 )
 
 # Allowed file extensions for student observation reports
@@ -207,11 +213,17 @@ def discover_student_reports(base_dir: str) -> Dict[str, Dict[str, Any]]:
                 if sid in students:
                     students[sid] = {
                         "file_path": None,
+                        "student_dir": batch_root,
+                        "code_files": [],
+                        "code_count": 0,
                         "error": f"Ambiguous: multiple observation reports found mapping to student ID {sid}"
                     }
                 else:
                     students[sid] = {
                         "file_path": item_path,
+                        "student_dir": batch_root,
+                        "code_files": [],
+                        "code_count": 0,
                         "error": None
                     }
             continue
@@ -221,15 +233,18 @@ def discover_student_reports(base_dir: str) -> Dict[str, Dict[str, Any]]:
 
         # Find candidate report files inside the student directory
         candidates = []
+        code_files = []
         for root, _, files in os.walk(student_dir):
             if "__MACOSX" in root:
                 continue
-            for f in files:
+            for f in sorted(files):
                 if f.startswith("."):
                     continue
                 ext = os.path.splitext(f)[1].lower()
                 if ext in ALLOWED_EXTENSIONS:
                     candidates.append(os.path.join(root, f))
+                elif ext in (".c", ".cpp", ".py", ".h", ".java"):
+                    code_files.append(os.path.join(root, f))
 
         # Detect Student ID
         # Priority 1: Check item name (zip or folder name)
@@ -270,6 +285,9 @@ def discover_student_reports(base_dir: str) -> Dict[str, Dict[str, Any]]:
         if sid in students:
             students[sid] = {
                 "file_path": None,
+                "student_dir": student_dir,
+                "code_files": code_files,
+                "code_count": len(code_files),
                 "error": f"Ambiguous: duplicate student ID {sid} found in batch archives"
             }
             continue
@@ -311,8 +329,41 @@ def discover_student_reports(base_dir: str) -> Dict[str, Dict[str, Any]]:
         students[sid] = {
             "file_path": best_file,
             "student_dir": student_dir,
+            "code_files": code_files,
+            "code_count": len(code_files),
             "error": error_msg
         }
+
+    # Check for flat C files directly inside batch_root
+    flat_code_files = []
+    for f in sorted(os.listdir(batch_root)):
+        if f.startswith(".") or f.startswith("__MACOSX"):
+            continue
+        fp = os.path.join(batch_root, f)
+        if os.path.isfile(fp) and os.path.splitext(f)[1].lower() in (".c", ".cpp", ".py", ".h", ".java"):
+            flat_code_files.append(fp)
+
+    if flat_code_files:
+        if len(students) == 1:
+            only_sid = next(iter(students.keys()))
+            students[only_sid]["student_dir"] = students[only_sid].get("student_dir") or batch_root
+            existing = students[only_sid].get("code_files", [])
+            for f in flat_code_files:
+                if f not in existing:
+                    existing.append(f)
+            students[only_sid]["code_files"] = existing
+            students[only_sid]["code_count"] = len(existing)
+        else:
+            for sid in students:
+                matched = [f for f in flat_code_files if sid.lower() in os.path.basename(f).lower()]
+                if matched:
+                    students[sid]["student_dir"] = students[sid].get("student_dir") or batch_root
+                    existing = students[sid].get("code_files", [])
+                    for f in matched:
+                        if f not in existing:
+                            existing.append(f)
+                    students[sid]["code_files"] = existing
+                    students[sid]["code_count"] = len(existing)
 
     return students
 
@@ -1196,3 +1247,606 @@ class BatchPipeline:
                         zf.write(full_path, arcname=arc_name)
 
         return self.zip_path
+
+    # ============================================================
+    # 4-STEP PIPELINE: UNAMBIGUOUS STEP EXECUTION METHODS
+    # ============================================================
+
+    def step1_ingest_zip(
+        self,
+        zip_source: Any,
+        target_dir: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Step 1: Ingest and validate cohort ZIP archive.
+        Discovers student observation reports and C source code files.
+        """
+        unpacked_dir = target_dir or os.path.join(self.batch_output_dir, "unpacked_cohort")
+        os.makedirs(unpacked_dir, exist_ok=True)
+
+        # Handle Streamlit UploadedFile, bytes, or file path string
+        if hasattr(zip_source, "read"):
+            temp_zip = os.path.join(self.batch_output_dir, "input_cohort.zip")
+            with open(temp_zip, "wb") as f:
+                f.write(zip_source.read())
+            validate_and_extract_zip(temp_zip, extract_to=unpacked_dir)
+        elif isinstance(zip_source, bytes):
+            temp_zip = os.path.join(self.batch_output_dir, "input_cohort.zip")
+            with open(temp_zip, "wb") as f:
+                f.write(zip_source)
+            validate_and_extract_zip(temp_zip, extract_to=unpacked_dir)
+        else:
+            validate_and_extract_zip(str(zip_source), extract_to=unpacked_dir)
+
+        self.unpacked_dir = unpacked_dir
+        discovered = discover_student_reports(unpacked_dir)
+        self.discovered_students = discovered
+
+        # Register in manifest state
+        for sid, info in discovered.items():
+            st_dir = info.get("student_dir")
+            c_files = info.get("code_files", [])
+            c_count = info.get("code_count", len(c_files))
+            if sid not in self.state:
+                self.state[sid] = BatchStudentStatus(
+                    student_id=sid,
+                    section_id=self.section_id,
+                    status="pending",
+                    ocr_status="pending",
+                    calculated_score_status="pending",
+                    ollama_evaluation_status="pending",
+                    gemini_evaluation_status="pending",
+                    student_dir=st_dir,
+                    code_files=c_files,
+                    code_count=c_count
+                )
+            else:
+                self.state[sid].student_dir = st_dir
+                self.state[sid].code_files = c_files
+                self.state[sid].code_count = c_count
+
+        self.save_manifest()
+        return {
+            "unpacked_dir": unpacked_dir,
+            "total_students": len(discovered),
+            "students": discovered
+        }
+
+    def step2_run_ocr(
+        self,
+        discovered_students: Optional[Dict[str, Dict[str, Any]]] = None,
+        selected_student_ids: Optional[List[str]] = None,
+        force_rerun: bool = False,
+        progress_cb: Optional[Callable[[BatchStudentStatus], None]] = None
+    ) -> Dict[str, Any]:
+        """
+        Step 2: Run PaddleOCR sequentially (concurrency=1) on discovered student reports.
+        Extracts raw text and per-page breakdown into {student_id}.json without calling any LLM.
+        """
+        students_map = discovered_students or getattr(self, "discovered_students", None)
+        if not students_map:
+            # Fallback to scanning unpacked directory or student files
+            students_map = {}
+            if hasattr(self, "unpacked_dir") and os.path.exists(self.unpacked_dir):
+                students_map = discover_student_reports(self.unpacked_dir)
+
+        results = {}
+        for sid, info in students_map.items():
+            if selected_student_ids and sid not in selected_student_ids:
+                continue
+
+            status_entry = self.state.setdefault(
+                sid,
+                BatchStudentStatus(student_id=sid, section_id=self.section_id, status="pending")
+            )
+
+            file_path = info.get("file_path")
+            out_json = os.path.join(self.students_dir, f"{sid}.json")
+
+            # Check if valid OCR text already exists unless force_rerun is requested
+            if not force_rerun and os.path.exists(out_json):
+                try:
+                    with open(out_json, "r", encoding="utf-8") as f:
+                        cur_data = json.load(f)
+                    ocr_txt = cur_data.get("ocr", {}).get("text", "").strip()
+                    if ocr_txt:
+                        status_entry.ocr_status = "completed"
+                        results[sid] = {"success": True, "cached": True, "text_length": len(ocr_txt)}
+                        if progress_cb:
+                            progress_cb(status_entry)
+                        continue
+                except Exception:
+                    pass
+
+            if not file_path or not os.path.exists(file_path):
+                status_entry.ocr_status = "failed"
+                status_entry.error = "Report document not found"
+                results[sid] = {"success": False, "error": status_entry.error}
+                if progress_cb:
+                    progress_cb(status_entry)
+                continue
+
+            # Run PaddleOCR worker
+            status_entry.status = "processing_ocr"
+            status_entry.ocr_status = "running"
+            if progress_cb:
+                progress_cb(status_entry)
+
+            ocr_res = run_paddle_worker_sync(
+                file_path=file_path,
+                python_exe=self.python_exe,
+                timeout=self.ocr_timeout
+            )
+
+            if not ocr_res.get("success", False):
+                status_entry.ocr_status = "failed"
+                status_entry.error = ocr_res.get("error", "OCR failed")
+                results[sid] = {"success": False, "error": status_entry.error}
+            else:
+                ocr_text = str(ocr_res.get("text", "")).strip()
+                status_entry.ocr_status = "completed"
+                status_entry.error = None
+                results[sid] = {"success": True, "text_length": len(ocr_text)}
+
+                st_info = students_map.get(sid, {})
+                st_dir = st_info.get("student_dir") or (os.path.dirname(file_path) if file_path else None)
+                c_files = st_info.get("code_files", [])
+                if not c_files and st_dir and os.path.exists(st_dir):
+                    c_files = [os.path.join(root, f) for root, _, files in os.walk(st_dir) for f in sorted(files) if f.endswith((".c", ".cpp", ".py", ".h", ".java"))]
+
+                # Extract Stage 1 canonical ObservationReport from OCR text immediately
+                from extractor import extract_observation_report_stage1
+                obs_report = extract_observation_report_stage1(ocr_text)
+                obs_dict = obs_report.model_dump()
+                ext_dict = obs_report.to_extraction_result().model_dump()
+
+                # Save standalone Stage 1 ObservationReport JSON artifact
+                obs_out_json = os.path.join(self.students_dir, f"{sid}_observation_report.json")
+                atomic_write_json(obs_out_json, obs_dict)
+
+                # Update or initialize student JSON
+                student_payload = {
+                    "student_id": sid,
+                    "section_id": self.section_id or "SEC1",
+                    "week_id": self.week_id,
+                    "status": "completed",
+                    "student_dir": st_dir,
+                    "code_files": [os.path.basename(cf) for cf in c_files],
+                    "code_count": len(c_files),
+                    "source": {
+                        "filename": os.path.basename(file_path),
+                        "file_size_bytes": os.path.getsize(file_path) if os.path.exists(file_path) else 0,
+                        "mime_type": "application/pdf" if file_path.lower().endswith(".pdf") else "image/jpeg"
+                    },
+                    "ocr": {
+                        "text": ocr_text,
+                        "page_breakdown": ocr_res.get("page_breakdown", []),
+                        "total_pages": ocr_res.get("total_pages", len(ocr_res.get("page_breakdown", []))),
+                        "total_time": ocr_res.get("total_time", 0.0)
+                    },
+                    "observation_report": obs_dict,
+                    "extraction": ext_dict
+                }
+
+                # If existing JSON has evaluation or scores, preserve them
+                if os.path.exists(out_json):
+                    try:
+                        with open(out_json, "r", encoding="utf-8") as f:
+                            old_data = json.load(f)
+                        for k in ("calculated_score", "ollama_evaluation", "gemini_evaluation", "evaluation", "evaluation_report"):
+                            if k in old_data:
+                                student_payload[k] = old_data[k]
+                    except Exception:
+                        pass
+
+                atomic_write_json(out_json, student_payload)
+
+            if progress_cb:
+                progress_cb(status_entry)
+
+        self.save_manifest()
+        return results
+
+    def step3_calculate_scores(
+        self,
+        discovered_students: Optional[Dict[str, Dict[str, Any]]] = None,
+        selected_student_ids: Optional[List[str]] = None,
+        progress_cb: Optional[Callable[[BatchStudentStatus], None]] = None
+    ) -> Dict[str, CalculatedScore]:
+        """
+        Step 3: Deterministic Rubric Score Calculation.
+        Computes 100% reproducible rubric scores (/10) for all students based on OCR evidence,
+        question matching, and C code static checks. Zero LLM hallucination.
+        """
+        students_map = discovered_students or getattr(self, "discovered_students", {})
+        scores = {}
+
+        # If discovered_students is empty, gather from students_dir
+        if not students_map and os.path.exists(self.students_dir):
+            for fname in os.listdir(self.students_dir):
+                if fname.endswith(".json") and not any(fname.endswith(s) for s in ("_manifest.json", "_summary.json", "_reports.json")):
+                    sid = os.path.splitext(fname)[0]
+                    students_map[sid] = {"file_path": os.path.join(self.students_dir, fname)}
+
+        for sid, info in students_map.items():
+            if selected_student_ids and sid not in selected_student_ids:
+                continue
+
+            status_entry = self.state.setdefault(
+                sid,
+                BatchStudentStatus(student_id=sid, section_id=self.section_id, status="pending")
+            )
+            status_entry.status = "calculating_score"
+            status_entry.stage = "scoring"
+            if progress_cb:
+                progress_cb(status_entry)
+
+            out_json = os.path.join(self.students_dir, f"{sid}.json")
+            ocr_text = ""
+            ext_data = None
+            student_data = {}
+
+            if os.path.exists(out_json):
+                try:
+                    with open(out_json, "r", encoding="utf-8") as f:
+                        student_data = json.load(f)
+                    ocr_text = student_data.get("ocr", {}).get("text", "")
+                    ext_data = student_data.get("extraction")
+                except Exception:
+                    pass
+
+            s_dir = info.get("student_dir") or student_data.get("student_dir") or (os.path.dirname(info.get("file_path")) if info.get("file_path") else None)
+            student_code = find_student_code(student_id=sid, week_id=self.week_id, student_dir=s_dir)
+
+            # Deterministic Score Calculation
+            calc_res = calculate_deterministic_score(
+                student_id=sid,
+                ocr_text=ocr_text,
+                extracted_report=ext_data,
+                student_code=student_code,
+                week_id=self.week_id,
+                assigned_questions=self.assigned_questions
+            )
+
+            scores[sid] = calc_res
+            status_entry.calculated_score = calc_res.total_score
+            status_entry.calculated_score_status = "completed"
+            status_entry.stage = None
+            status_entry.status = "completed"
+
+            # Save in student JSON
+            student_data["calculated_score"] = calc_res.model_dump()
+            atomic_write_json(out_json, student_data)
+
+            if progress_cb:
+                progress_cb(status_entry)
+
+        self.save_manifest()
+        self.build_scores_summary_csv()
+        return scores
+
+    def step4_run_llm_judges(
+        self,
+        providers: List[str] = ["ollama", "gemini"],
+        discovered_students: Optional[Dict[str, Dict[str, Any]]] = None,
+        selected_student_ids: Optional[List[str]] = None,
+        progress_cb: Optional[Callable[[BatchStudentStatus], None]] = None,
+        skip_existing: bool = True,
+        gemini_model: Optional[str] = None,
+        gemini_key: Optional[str] = None,
+        auto_build_artifacts: bool = True,
+    ) -> Dict[str, Dict[str, LLMJudgeEvaluation]]:
+        """
+        Step 4: LLM as Judge Evaluation.
+        Runs Ollama and/or Gemini independently to generate two separate reports and recommended scores.
+        Neither model sees the other's score.
+        Supports resume/skip_existing and per-student error isolation.
+        """
+        students_map = discovered_students or getattr(self, "discovered_students", {})
+        if not students_map and os.path.exists(self.students_dir):
+            for fname in os.listdir(self.students_dir):
+                if fname.endswith(".json") and not any(fname.endswith(s) for s in ("_manifest.json", "_summary.json", "_reports.json")):
+                    sid = os.path.splitext(fname)[0]
+                    students_map[sid] = {"file_path": os.path.join(self.students_dir, fname)}
+
+        results: Dict[str, Dict[str, LLMJudgeEvaluation]] = {}
+
+        for sid, info in students_map.items():
+            if selected_student_ids and sid not in selected_student_ids:
+                continue
+
+            status_entry = self.state.setdefault(
+                sid,
+                BatchStudentStatus(student_id=sid, section_id=self.section_id, status="pending")
+            )
+
+            out_json = os.path.join(self.students_dir, f"{sid}.json")
+            student_data = {}
+            ocr_text = ""
+            ext_data = None
+            if os.path.exists(out_json):
+                try:
+                    with open(out_json, "r", encoding="utf-8") as f:
+                        student_data = json.load(f)
+                    ocr_text = student_data.get("ocr", {}).get("text", "")
+                    ext_data = student_data.get("observation_report") or student_data.get("extraction")
+                except Exception:
+                    pass
+
+            # Ensure observation report has actual detected programs; extract if missing
+            num_entries = 0
+            if isinstance(ext_data, dict):
+                if ext_data.get("entries"):
+                    num_entries = len(ext_data["entries"])
+                elif ext_data.get("detected_programs"):
+                    num_entries = len(ext_data["detected_programs"])
+                elif ext_data.get("programs"):
+                    num_entries = len(ext_data["programs"])
+
+            if num_entries == 0 and ocr_text:
+                from extractor import extract_observation_report_stage1
+                obs_rep = extract_observation_report_stage1(ocr_text)
+                student_data["observation_report"] = obs_rep.model_dump()
+                student_data["extraction"] = obs_rep.to_extraction_result().model_dump()
+                ext_data = student_data["observation_report"]
+                atomic_write_json(out_json, student_data)
+                obs_file = os.path.join(self.students_dir, f"{sid}_observation_report.json")
+                atomic_write_json(obs_file, student_data["observation_report"])
+
+            s_dir = info.get("student_dir") or student_data.get("student_dir") or (os.path.dirname(info.get("file_path")) if info.get("file_path") else None)
+            student_code = find_student_code(student_id=sid, week_id=self.week_id, student_dir=s_dir)
+
+            results[sid] = {}
+
+            # 1. Ollama Judge
+            if "ollama" in providers:
+                ollama_md_path = os.path.join(self.students_dir, f"{sid}_ollama_evaluation.md")
+                has_valid_ollama = (
+                    skip_existing
+                    and os.path.exists(ollama_md_path)
+                    and os.path.getsize(ollama_md_path) > 1000
+                    and "ollama_evaluation" in student_data
+                    and student_data["ollama_evaluation"].get("recommended_score") is not None
+                )
+                if has_valid_ollama:
+                    status_entry.ollama_score = student_data["ollama_evaluation"].get("recommended_score")
+                    status_entry.ollama_evaluation_status = "completed"
+                else:
+                    status_entry.status = "evaluating_ollama"
+                    status_entry.ollama_evaluation_status = "running"
+                    if progress_cb:
+                        progress_cb(status_entry)
+
+                    try:
+                        ollama_eval = evaluate_with_ollama(
+                            student_id=sid,
+                            report_text=ocr_text,
+                            extracted_report=ext_data,
+                            student_code=student_code,
+                            assigned_questions=self.assigned_questions,
+                            base_url=self.ollama_url,
+                            model=self.model,
+                            temperature=self.temperature,
+                            week_id=self.week_id
+                        )
+                        results[sid]["ollama"] = ollama_eval
+                        student_data["ollama_evaluation"] = ollama_eval.model_dump()
+                        student_data["evaluation"] = ollama_eval.full_report_markdown
+
+                        with open(ollama_md_path, "w", encoding="utf-8") as f:
+                            f.write(ollama_eval.full_report_markdown)
+
+                        if getattr(ollama_eval, "evaluation_report", None):
+                            ollama_json_path = os.path.join(self.students_dir, f"{sid}_ollama_evaluation.json")
+                            atomic_write_json(ollama_json_path, ollama_eval.evaluation_report)
+
+                        status_entry.ollama_score = ollama_eval.recommended_score
+                        status_entry.ollama_evaluation_status = "completed"
+                    except Exception as e:
+                        safe_print(f"Error evaluating student {sid} with Ollama: {e}")
+                        status_entry.ollama_evaluation_status = "failed"
+
+            # 2. Gemini Judge
+            if "gemini" in providers:
+                gemini_md_path = os.path.join(self.students_dir, f"{sid}_gemini_evaluation.md")
+                has_full_gemini = False
+                if skip_existing and os.path.exists(gemini_md_path) and os.path.getsize(gemini_md_path) > 3000:
+                    try:
+                        with open(gemini_md_path, "r", encoding="utf-8") as f:
+                            c_txt = f.read()
+                        if "## 1. Submission Summary" in c_txt and "## 7. Final Score" in c_txt:
+                            has_full_gemini = True
+                    except Exception:
+                        has_full_gemini = False
+
+                if has_full_gemini and "gemini_evaluation" in student_data and student_data["gemini_evaluation"].get("recommended_score") is not None:
+                    status_entry.gemini_score = student_data["gemini_evaluation"].get("recommended_score")
+                    status_entry.gemini_evaluation_status = "completed"
+                else:
+                    status_entry.status = "evaluating_gemini"
+                    status_entry.gemini_evaluation_status = "running"
+                    if progress_cb:
+                        progress_cb(status_entry)
+
+                    try:
+                        target_g_key = gemini_key or getattr(self, "gemini_key", None) or os.environ.get("GEMINI_API_KEY", "")
+                        target_g_model = gemini_model or getattr(self, "gemini_model", None) or os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
+
+                        gemini_eval = evaluate_with_gemini(
+                            student_id=sid,
+                            report_text=ocr_text,
+                            extracted_report=ext_data,
+                            student_code=student_code,
+                            assigned_questions=self.assigned_questions,
+                            api_key=target_g_key,
+                            model_name=target_g_model,
+                            temperature=self.temperature,
+                            week_id=self.week_id
+                        )
+                        results[sid]["gemini"] = gemini_eval
+                        student_data["gemini_evaluation"] = gemini_eval.model_dump()
+
+                        with open(gemini_md_path, "w", encoding="utf-8") as f:
+                            f.write(gemini_eval.full_report_markdown)
+
+                        if getattr(gemini_eval, "evaluation_report", None):
+                            gemini_json_path = os.path.join(self.students_dir, f"{sid}_gemini_evaluation.json")
+                            atomic_write_json(gemini_json_path, gemini_eval.evaluation_report)
+
+                        status_entry.gemini_score = gemini_eval.recommended_score
+                        status_entry.gemini_evaluation_status = "completed"
+                    except Exception as e:
+                        safe_print(f"Error evaluating student {sid} with Gemini: {e}")
+                        status_entry.gemini_evaluation_status = "failed"
+
+            status_entry.status = "completed"
+            atomic_write_json(out_json, student_data)
+
+            if progress_cb:
+                progress_cb(status_entry)
+
+        if auto_build_artifacts:
+            self.save_manifest()
+            self.build_scores_summary_csv()
+            self.create_model_reports_zip("ollama")
+            self.create_model_reports_zip("gemini")
+            self.build_provider_section_json("ollama")
+            self.build_provider_section_json("gemini")
+        return results
+
+    def build_scores_summary_csv(self) -> str:
+        """
+        Builds a comprehensive comparison CSV showing Step 3 Calculated Score vs Step 4 Ollama vs Step 4 Gemini.
+        """
+        rows = []
+        if os.path.exists(self.students_dir):
+            for fname in sorted(os.listdir(self.students_dir)):
+                if fname.endswith(".json") and not any(fname.endswith(s) for s in ("_manifest.json", "_summary.json", "_reports.json")):
+                    sid = os.path.splitext(fname)[0]
+                    j_path = os.path.join(self.students_dir, fname)
+                    try:
+                        with open(j_path, "r", encoding="utf-8") as f:
+                            d = json.load(f)
+                        calc = d.get("calculated_score", {})
+                        o_eval = d.get("ollama_evaluation", {})
+                        g_eval = d.get("gemini_evaluation", {})
+
+                        rows.append({
+                            "Student ID": sid,
+                            "Detected Programs": len(calc.get("detected_programs", [])),
+                            "Step 3 Calculated Score": calc.get("total_score", "—"),
+                            "Calculated Grade": calc.get("grade", "—"),
+                            "Calculated Status": calc.get("status", "—"),
+                            "Step 4 Ollama Score": o_eval.get("recommended_score", "—"),
+                            "Ollama Grade": o_eval.get("grade", "—"),
+                            "Step 4 Gemini Score": g_eval.get("recommended_score", "—"),
+                            "Gemini Grade": g_eval.get("grade", "—"),
+                            "Consensus Verdict": "Approved" if (calc.get("status") == "Approved" or o_eval.get("status") == "Approved" or g_eval.get("status") == "Approved") else "Needs Revision"
+                        })
+                    except Exception:
+                        pass
+
+        csv_path = os.path.join(self.batch_output_dir, f"{self.section_id or 'SEC1'}_{self.week_id}_scores_comparison.csv")
+        if rows:
+            import pandas as pd
+            df = pd.DataFrame(rows)
+            df.to_csv(csv_path, index=False, encoding="utf-8")
+        return csv_path
+
+    def create_model_reports_zip(self, provider: str = "ollama") -> str:
+        """
+        Packages individual markdown reports for a specific provider into a ZIP.
+        """
+        zip_fname = f"{self.section_id or 'SEC1'}_{self.week_id}_{provider}_reports.zip"
+        target_zip = os.path.join(self.batch_output_dir, zip_fname)
+        suffix = f"_{provider}_evaluation.md"
+
+        with zipfile.ZipFile(target_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            if os.path.exists(self.students_dir):
+                for fname in sorted(os.listdir(self.students_dir)):
+                    if fname.endswith(suffix):
+                        full_path = os.path.join(self.students_dir, fname)
+                        zf.write(full_path, arcname=fname)
+
+        return target_zip
+
+    def build_provider_section_json(self, provider: str = "ollama") -> str:
+        """
+        Compiles an overall section aggregated JSON containing evaluations for a specific provider (Ollama or Gemini).
+        Saved as {section_id}_{week_id}_{provider}_evaluations.json.
+        """
+        out_fname = f"{self.section_id or 'SEC1'}_{self.week_id}_{provider}_evaluations.json"
+        target_json = os.path.join(self.batch_output_dir, out_fname)
+
+        students_evaluations: Dict[str, Any] = {}
+        scores: List[float] = []
+
+        if os.path.exists(self.students_dir):
+            for fname in sorted(os.listdir(self.students_dir)):
+                if fname.endswith(".json") and not any(fname.endswith(s) for s in ("_manifest.json", "_summary.json", "_reports.json", "_observation_report.json", "_evaluations.json", "_ollama_evaluation.json", "_gemini_evaluation.json")):
+                    full_path = os.path.join(self.students_dir, fname)
+                    try:
+                        with open(full_path, "r", encoding="utf-8") as f:
+                            sdata = json.load(f)
+                        sid = sdata.get("student_id", os.path.splitext(fname)[0])
+                        key = f"{provider}_evaluation"
+                        peval = sdata.get(key)
+                        if peval:
+                            students_evaluations[sid] = peval
+                            rec = peval.get("recommended_score")
+                            if rec is not None:
+                                try:
+                                    scores.append(float(rec))
+                                except (ValueError, TypeError):
+                                    pass
+                    except Exception:
+                        pass
+
+        avg_score = round(sum(scores) / len(scores), 2) if scores else None
+        section_payload = {
+            "schema_version": "2.0",
+            "section_id": self.section_id or "SEC1",
+            "week_id": self.week_id,
+            "provider": provider,
+            "total_students": len(self.state) or len(students_evaluations),
+            "evaluated_students": len(students_evaluations),
+            "average_score": avg_score,
+            "generated_at": datetime.now().isoformat(),
+            "students": students_evaluations
+        }
+
+        atomic_write_json(target_json, section_payload)
+        return target_json
+
+    def run_all_steps(
+        self,
+        zip_source: Optional[Union[str, bytes, io.BytesIO]] = None,
+        providers: List[str] = ["ollama", "gemini"],
+        progress_cb: Optional[Callable[[BatchStudentStatus], None]] = None
+    ) -> Dict[str, Any]:
+        """
+        Executes all 4 steps end-to-end sequentially:
+        Step 1: Ingest Zip
+        Step 2: Do OCR
+        Step 3: Calculate Scores
+        Step 4: LLM as Judge (Dual Reports: Ollama & Gemini)
+        """
+        if zip_source:
+            self.step1_ingest_zip(zip_source)
+
+        self.step2_run_ocr(progress_cb=progress_cb)
+        self.step3_calculate_scores(progress_cb=progress_cb)
+        self.step4_run_llm_judges(providers=providers, progress_cb=progress_cb)
+        self.build_complete_section_json()
+        self.build_section_summary()
+        self.create_batch_zip()
+        self.build_provider_section_json("ollama")
+        self.build_provider_section_json("gemini")
+
+        return {
+            "status": "completed",
+            "section_id": self.section_id,
+            "week_id": self.week_id,
+            "manifest": self.save_manifest()
+        }
+
