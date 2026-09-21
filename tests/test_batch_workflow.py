@@ -229,3 +229,41 @@ def test_rerun_evaluations_on_extracted(mock_ext, mock_ocr):
         with open(s1_md, "r", encoding="utf-8") as f:
             assert f.read() == "# Re-evaluated Report: 10/10"
 
+
+def test_build_provider_section_json_includes_ocr_extracted_text():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pipeline = BatchPipeline(batch_output_dir=tmpdir, section_id="SEC1", week_id="week-01")
+        os.makedirs(pipeline.students_dir, exist_ok=True)
+
+        student_data = {
+            "student_id": "22001",
+            "section_id": "SEC1",
+            "week_id": "week-01",
+            "ocr": {
+                "text": "1. Prime Number Check using recursion\nInput: n\nOutput: Prime or Not",
+                "page_breakdown": [{"page": 1, "text": "1. Prime Number Check"}]
+            },
+            "ollama_evaluation": {
+                "provider": "ollama",
+                "model_name": "qwen2.5-coder:3b",
+                "recommended_score": 8.5,
+                "grade": "A",
+                "status": "Approved"
+            }
+        }
+        with open(os.path.join(pipeline.students_dir, "22001.json"), "w", encoding="utf-8") as f:
+            json.dump(student_data, f)
+
+        out_json = pipeline.build_provider_section_json("ollama")
+        assert os.path.exists(out_json)
+
+        with open(out_json, "r", encoding="utf-8") as f:
+            sec_data = json.load(f)
+
+        assert "22001" in sec_data["students"]
+        s = sec_data["students"]["22001"]
+        assert s["ocr_extracted_text"] == "1. Prime Number Check using recursion\nInput: n\nOutput: Prime or Not"
+        assert s["ocr_text"] == s["ocr_extracted_text"]
+        assert s["ocr"]["page_breakdown"][0]["page"] == 1
+
+

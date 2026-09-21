@@ -1195,6 +1195,8 @@ class LLMJudgeEvaluation(BaseModel):
     raw_response: Optional[str] = Field(default=None, description="Raw LLM response if needed for auditing")
     evaluated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     evaluation_report: Optional[Union["EvaluationReport", Dict[str, Any]]] = None
+    ocr_extracted_text: Optional[str] = Field(default=None, description="Extracted raw text from student OCR report")
+    ocr_text: Optional[str] = Field(default=None, description="Extracted OCR text alias")
 
 
 class StudentObservationReport(BaseModel):
@@ -1912,6 +1914,8 @@ class EvaluationReport(BaseModel):
     grading_policy: Optional[str] = None
     grade: Optional[str] = None
     status: Optional[str] = None
+    ocr_extracted_text: Optional[str] = Field(default=None, description="Extracted raw text from student OCR report")
+    ocr_text: Optional[str] = Field(default=None, description="Extracted OCR text alias")
 
     @property
     def dimensions(self) -> DimensionAccessor:

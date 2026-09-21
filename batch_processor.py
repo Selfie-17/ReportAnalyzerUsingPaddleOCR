@@ -1106,7 +1106,7 @@ class BatchPipeline:
 
         if os.path.exists(self.students_dir):
             for fname in sorted(os.listdir(self.students_dir)):
-                if fname.endswith(".json") and not fname.endswith("_manifest.json") and not fname.endswith("_summary.json") and not fname.endswith("_reports.json"):
+                if fname.endswith(".json") and not any(fname.endswith(s) for s in ("_manifest.json", "_summary.json", "_reports.json", "_observation_report.json", "_evaluations.json", "_ollama_evaluation.json", "_gemini_evaluation.json", "_brief_evaluation.json")):
                     full_path = os.path.join(self.students_dir, fname)
                     try:
                         with open(full_path, "r", encoding="utf-8") as f:
@@ -1630,7 +1630,10 @@ class BatchPipeline:
                             week_id=self.week_id
                         )
                         results[sid]["ollama"] = ollama_eval
-                        student_data["ollama_evaluation"] = ollama_eval.model_dump()
+                        ollama_dump = ollama_eval.model_dump()
+                        ollama_dump["ocr_extracted_text"] = ocr_text
+                        ollama_dump["ocr_text"] = ocr_text
+                        student_data["ollama_evaluation"] = ollama_dump
                         student_data["evaluation"] = ollama_eval.full_report_markdown
 
                         with open(ollama_md_path, "w", encoding="utf-8") as f:
@@ -1684,7 +1687,10 @@ class BatchPipeline:
                             week_id=self.week_id
                         )
                         results[sid]["gemini"] = gemini_eval
-                        student_data["gemini_evaluation"] = gemini_eval.model_dump()
+                        gemini_dump = gemini_eval.model_dump()
+                        gemini_dump["ocr_extracted_text"] = ocr_text
+                        gemini_dump["ocr_text"] = ocr_text
+                        student_data["gemini_evaluation"] = gemini_dump
 
                         with open(gemini_md_path, "w", encoding="utf-8") as f:
                             f.write(gemini_eval.full_report_markdown)
@@ -1783,7 +1789,7 @@ class BatchPipeline:
 
         if os.path.exists(self.students_dir):
             for fname in sorted(os.listdir(self.students_dir)):
-                if fname.endswith(".json") and not any(fname.endswith(s) for s in ("_manifest.json", "_summary.json", "_reports.json", "_observation_report.json", "_evaluations.json", "_ollama_evaluation.json", "_gemini_evaluation.json")):
+                if fname.endswith(".json") and not any(fname.endswith(s) for s in ("_manifest.json", "_summary.json", "_reports.json", "_observation_report.json", "_evaluations.json", "_ollama_evaluation.json", "_gemini_evaluation.json", "_brief_evaluation.json")):
                     full_path = os.path.join(self.students_dir, fname)
                     try:
                         with open(full_path, "r", encoding="utf-8") as f:
@@ -1792,7 +1798,27 @@ class BatchPipeline:
                         key = f"{provider}_evaluation"
                         peval = sdata.get(key)
                         if peval:
-                            students_evaluations[sid] = peval
+                            peval_copy = dict(peval)
+                            ocr_obj = sdata.get("ocr")
+                            ocr_text = ""
+                            if isinstance(ocr_obj, dict):
+                                ocr_text = ocr_obj.get("text", "")
+                            elif isinstance(ocr_obj, str):
+                                ocr_text = ocr_obj
+                            if not ocr_text:
+                                ocr_text = sdata.get("ocr_text", "") or sdata.get("ocr_extracted_text", "") or peval.get("ocr_extracted_text", "") or peval.get("ocr_text", "")
+
+                            peval_copy["student_id"] = sid
+                            peval_copy["ocr_extracted_text"] = ocr_text
+                            peval_copy["ocr_text"] = ocr_text
+                            if isinstance(ocr_obj, dict) and ocr_obj:
+                                peval_copy["ocr"] = ocr_obj
+
+                            if isinstance(peval_copy.get("evaluation_report"), dict):
+                                peval_copy["evaluation_report"]["ocr_extracted_text"] = ocr_text
+                                peval_copy["evaluation_report"]["ocr_text"] = ocr_text
+
+                            students_evaluations[sid] = peval_copy
                             rec = peval.get("recommended_score")
                             if rec is not None:
                                 try:

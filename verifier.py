@@ -6539,7 +6539,9 @@ def evaluate_with_ollama(
         strengths=holistic_res.strengths,
         recommendations=holistic_res.improvement_areas,
         full_report_markdown=report_md,
-        evaluation_report=eval_rep.model_dump() if eval_rep else None
+        evaluation_report=eval_rep.model_dump() if eval_rep else None,
+        ocr_extracted_text=report_text,
+        ocr_text=report_text
     )
 
 
@@ -6623,7 +6625,9 @@ def evaluate_with_gemini(
         strengths=holistic_res.strengths,
         recommendations=holistic_res.improvement_areas,
         full_report_markdown=report_md,
-        evaluation_report=eval_rep.model_dump() if eval_rep else None
+        evaluation_report=eval_rep.model_dump() if eval_rep else None,
+        ocr_extracted_text=report_text,
+        ocr_text=report_text
     )
 
 
