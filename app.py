@@ -123,7 +123,7 @@ with st.sidebar:
 
     # 1. OCR Engine
     st.subheader("🖥️ Step 2: OCR Engine")
-    st.caption("PaddleOCR-VL 1.6 (GPU:0 • Concurrency = 1)")
+    st.caption("Engine selection & configuration is available in **Step 2: Do OCR** tab.")
     with st.expander("Paddle Python Executable"):
         st.code(get_paddle_python(), language="text")
 
@@ -149,10 +149,14 @@ with st.sidebar:
 
     # 3. Google Gemini Engine
     st.subheader("♊ Step 4: Gemini Judge")
-    gemini_key = os.environ.get("GEMINI_API_KEY", "")
+    from gemini_ocr import get_gemini_key_manager
+    km_judge = get_gemini_key_manager()
+    gemini_key = km_judge.get_all_keys()[0] if km_judge.has_keys() else os.environ.get("GEMINI_API_KEY", "")
     gemini_model = st.text_input("Gemini Model", value=os.environ.get("GEMINI_MODEL", "gemini-3.5-flash"))
 
-    if gemini_key:
+    if km_judge.key_count() > 1:
+        st.success(f"🟢 {km_judge.key_count()} Gemini API Keys Active (Multi-Key)")
+    elif gemini_key:
         st.success(f"🟢 Gemini API Key Active (`{gemini_key[:8]}...`)")
     else:
         st.warning("🟡 Gemini API Key Missing in .env")
@@ -332,13 +336,50 @@ with tab1:
 # ============================================================
 
 with tab2:
-    st.subheader("🔍 Step 2: Extract Text with PaddleOCR-VL 1.6")
-    st.caption("Runs PaddleOCR sequentially on each student's observation report. Extracts verbatim text and page breakdowns.")
+    cur_choice = st.session_state.get("ocr_engine_choice", "paddleocr")
+    header_title = "🔍 Step 2: Extract Text with Google Gemini Vision" if cur_choice == "gemini" else "🔍 Step 2: Extract Text with PaddleOCR-VL 1.6"
+    st.subheader(header_title)
+    if cur_choice == "gemini":
+        st.caption("Runs Google Gemini Vision OCR with multi-key rotation and automatic failover. Transcribes document text, tables, and code verbatim.")
+    else:
+        st.caption("Runs PaddleOCR sequentially on each student's observation report. Extracts verbatim text and page breakdowns.")
 
     discovered_map = st.session_state["discovered_students"]
     if not discovered_map:
         st.warning("⚠️ No students discovered yet. Please complete Step 1 (Upload Zip) first.")
     else:
+        # Quick Engine Selector for Step 2
+        col_t2_e1, col_t2_e2 = st.columns([1, 1])
+        with col_t2_e1:
+            tab2_engine = st.radio(
+                "Active OCR Engine for Extraction:",
+                options=["PaddleOCR-VL 1.6 (Local GPU)", "Google Gemini Vision (Cloud API)"],
+                index=0 if st.session_state.get("ocr_engine_choice") != "gemini" else 1,
+                horizontal=True,
+                key="tab2_engine_radio"
+            )
+            active_engine = "gemini" if "Gemini" in tab2_engine else "paddleocr"
+            st.session_state["ocr_engine_choice"] = active_engine
+        with col_t2_e2:
+            if active_engine == "gemini":
+                from gemini_ocr import get_gemini_key_manager
+                km_tab = get_gemini_key_manager()
+                if km_tab.key_count() > 1:
+                    st.success(f"🟢 {km_tab.key_count()} Gemini Keys Active (Round-Robin & 429 Failover)")
+                elif km_tab.key_count() == 1:
+                    st.success("🟢 1 Gemini Key Active")
+                else:
+                    st.warning("🟡 Missing Gemini API Key in .env")
+
+                gemini_ocr_model = st.selectbox(
+                    "Gemini OCR Model",
+                    options=["gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.0-flash"],
+                    index=0,
+                    key="tab2_gemini_model_sel"
+                )
+            else:
+                st.info("🖥️ PaddleOCR-VL 1.6 active on GPU:0")
+
         # Status calculation
         ocr_completed = 0
         ocr_failed = 0
@@ -374,7 +415,7 @@ with tab2:
 
         col_ocr_btn1, col_ocr_btn2 = st.columns(2)
         with col_ocr_btn1:
-            run_all_ocr = st.button("🚀 Extract OCR for All Students", type="primary")
+            run_all_ocr = st.button(f"🚀 Extract OCR for All Students ({'Gemini' if active_engine == 'gemini' else 'PaddleOCR'})", type="primary")
         with col_ocr_btn2:
             inspected_single = st.selectbox("Or select single student:", options=list(discovered_map.keys()), key="ocr_single_sel")
             run_single_ocr = st.button(f"🔍 Extract OCR for {inspected_single} Only", type="secondary")
@@ -385,13 +426,17 @@ with tab2:
             status_text = st.empty()
             errors = []
 
+            target_gemini_model = st.session_state.get("tab2_gemini_model_sel", "gemini-3.6-flash")
+
             for idx, sid in enumerate(target_sids):
-                status_text.write(f"Extracting OCR for **{sid}** ({idx+1}/{len(target_sids)})...")
+                status_text.write(f"Extracting OCR for **{sid}** via **{active_engine.upper()}** ({idx+1}/{len(target_sids)})...")
                 p_bar.progress(idx / len(target_sids))
 
                 res = pipeline.step2_run_ocr(
                     discovered_students={sid: discovered_map[sid]},
-                    force_rerun=force_ocr
+                    force_rerun=force_ocr,
+                    ocr_engine=active_engine,
+                    gemini_model=target_gemini_model
                 )
                 p_bar.progress((idx + 1) / len(target_sids))
 
@@ -405,7 +450,7 @@ with tab2:
                 for s_err, msg in errors:
                     st.error(f"❌ OCR extraction failed for **{s_err}**: {msg}")
             else:
-                st.success("✅ OCR extraction completed successfully!")
+                st.success(f"✅ OCR extraction via {active_engine.upper()} completed successfully!")
             st.rerun()
 
         st.divider()
@@ -416,12 +461,19 @@ with tab2:
             out_json = os.path.join(pipeline.students_dir, f"{inspected_sid}.json")
             ocr_text = ""
             doc_file = discovered_map.get(inspected_sid, {}).get("file_path")
+            engine_tag = "🖥️ PaddleOCR"
 
             if os.path.exists(out_json):
                 try:
                     with open(out_json, "r", encoding="utf-8") as f:
                         d = json.load(f)
                     ocr_text = d.get("ocr", {}).get("text", "")
+                    eng = d.get("ocr", {}).get("engine", "")
+                    mod = d.get("ocr", {}).get("model", "")
+                    if eng == "gemini":
+                        engine_tag = f"♊ Gemini ({mod})" if mod else "♊ Gemini"
+                    elif eng == "paddleocr":
+                        engine_tag = "🖥️ PaddleOCR-VL 1.6"
                 except Exception:
                     pass
 
@@ -443,7 +495,7 @@ with tab2:
                     st.info("Document file preview not found on disk.")
 
             with v_col2:
-                st.write(f"**Extracted OCR Text:** ({len(ocr_text)} characters)")
+                st.write(f"**Extracted OCR Text:** ({len(ocr_text)} characters • Engine: `{engine_tag}`)")
                 if ocr_text:
                     st.text_area("Extracted Markdown / Text", value=ocr_text, height=450, key=f"ocr_ta_{inspected_sid}")
                     st.download_button(

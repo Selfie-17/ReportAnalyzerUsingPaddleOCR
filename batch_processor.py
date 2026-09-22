@@ -1317,11 +1317,17 @@ class BatchPipeline:
         discovered_students: Optional[Dict[str, Dict[str, Any]]] = None,
         selected_student_ids: Optional[List[str]] = None,
         force_rerun: bool = False,
+        ocr_engine: str = "paddleocr",
+        gemini_model: Optional[str] = None,
+        gemini_keys: Optional[Union[List[str], str]] = None,
         progress_cb: Optional[Callable[[BatchStudentStatus], None]] = None
     ) -> Dict[str, Any]:
         """
-        Step 2: Run PaddleOCR sequentially (concurrency=1) on discovered student reports.
-        Extracts raw text and per-page breakdown into {student_id}.json without calling any LLM.
+        Step 2: Run OCR on discovered student reports.
+        Supports dual engines:
+          - "paddleocr": PaddleOCR-VL 1.6 on local GPU
+          - "gemini": Google Gemini API Multimodal OCR with multi-key rotation and failover
+        Extracts raw text and per-page breakdown into {student_id}.json.
         """
         students_map = discovered_students or getattr(self, "discovered_students", None)
         if not students_map:
@@ -1329,6 +1335,13 @@ class BatchPipeline:
             students_map = {}
             if hasattr(self, "unpacked_dir") and os.path.exists(self.unpacked_dir):
                 students_map = discover_student_reports(self.unpacked_dir)
+
+        # Prepare Gemini Key Manager if Gemini engine is selected
+        gemini_km = None
+        target_gemini_model = gemini_model or os.environ.get("GEMINI_OCR_MODEL") or os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+        if ocr_engine.lower() == "gemini":
+            from gemini_ocr import GeminiKeyManager, get_gemini_key_manager, extract_text_with_gemini
+            gemini_km = GeminiKeyManager(api_keys=gemini_keys) if gemini_keys else get_gemini_key_manager()
 
         results = {}
         for sid, info in students_map.items():
@@ -1348,10 +1361,16 @@ class BatchPipeline:
                 try:
                     with open(out_json, "r", encoding="utf-8") as f:
                         cur_data = json.load(f)
-                    ocr_txt = cur_data.get("ocr", {}).get("text", "").strip()
+                    ocr_data = cur_data.get("ocr", {})
+                    ocr_txt = ocr_data.get("text", "").strip()
                     if ocr_txt:
                         status_entry.ocr_status = "completed"
-                        results[sid] = {"success": True, "cached": True, "text_length": len(ocr_txt)}
+                        results[sid] = {
+                            "success": True,
+                            "cached": True,
+                            "text_length": len(ocr_txt),
+                            "engine": ocr_data.get("engine", "paddleocr")
+                        }
                         if progress_cb:
                             progress_cb(status_entry)
                         continue
@@ -1366,17 +1385,25 @@ class BatchPipeline:
                     progress_cb(status_entry)
                 continue
 
-            # Run PaddleOCR worker
+            # Run Selected OCR engine
             status_entry.status = "processing_ocr"
             status_entry.ocr_status = "running"
             if progress_cb:
                 progress_cb(status_entry)
 
-            ocr_res = run_paddle_worker_sync(
-                file_path=file_path,
-                python_exe=self.python_exe,
-                timeout=self.ocr_timeout
-            )
+            if ocr_engine.lower() == "gemini":
+                from gemini_ocr import extract_text_with_gemini
+                ocr_res = extract_text_with_gemini(
+                    file_path=file_path,
+                    model=target_gemini_model,
+                    key_manager=gemini_km
+                )
+            else:
+                ocr_res = run_paddle_worker_sync(
+                    file_path=file_path,
+                    python_exe=self.python_exe,
+                    timeout=self.ocr_timeout
+                )
 
             if not ocr_res.get("success", False):
                 status_entry.ocr_status = "failed"
@@ -1386,7 +1413,11 @@ class BatchPipeline:
                 ocr_text = str(ocr_res.get("text", "")).strip()
                 status_entry.ocr_status = "completed"
                 status_entry.error = None
-                results[sid] = {"success": True, "text_length": len(ocr_text)}
+                results[sid] = {
+                    "success": True,
+                    "text_length": len(ocr_text),
+                    "engine": ocr_engine.lower()
+                }
 
                 st_info = students_map.get(sid, {})
                 st_dir = st_info.get("student_dir") or (os.path.dirname(file_path) if file_path else None)
@@ -1404,6 +1435,8 @@ class BatchPipeline:
                 obs_out_json = os.path.join(self.students_dir, f"{sid}_observation_report.json")
                 atomic_write_json(obs_out_json, obs_dict)
 
+                total_pages_detected = ocr_res.get("num_pages") or ocr_res.get("total_pages", len(ocr_res.get("page_breakdown", [])))
+
                 # Update or initialize student JSON
                 student_payload = {
                     "student_id": sid,
@@ -1419,9 +1452,11 @@ class BatchPipeline:
                         "mime_type": "application/pdf" if file_path.lower().endswith(".pdf") else "image/jpeg"
                     },
                     "ocr": {
+                        "engine": ocr_engine.lower(),
+                        "model": ocr_res.get("model", target_gemini_model) if ocr_engine.lower() == "gemini" else "paddleocr-vl-1.6",
                         "text": ocr_text,
                         "page_breakdown": ocr_res.get("page_breakdown", []),
-                        "total_pages": ocr_res.get("total_pages", len(ocr_res.get("page_breakdown", []))),
+                        "total_pages": total_pages_detected,
                         "total_time": ocr_res.get("total_time", 0.0)
                     },
                     "observation_report": obs_dict,
@@ -1847,20 +1882,21 @@ class BatchPipeline:
     def run_all_steps(
         self,
         zip_source: Optional[Union[str, bytes, io.BytesIO]] = None,
+        ocr_engine: str = "paddleocr",
         providers: List[str] = ["ollama", "gemini"],
         progress_cb: Optional[Callable[[BatchStudentStatus], None]] = None
     ) -> Dict[str, Any]:
         """
         Executes all 4 steps end-to-end sequentially:
         Step 1: Ingest Zip
-        Step 2: Do OCR
+        Step 2: Do OCR (PaddleOCR or Gemini)
         Step 3: Calculate Scores
         Step 4: LLM as Judge (Dual Reports: Ollama & Gemini)
         """
         if zip_source:
             self.step1_ingest_zip(zip_source)
 
-        self.step2_run_ocr(progress_cb=progress_cb)
+        self.step2_run_ocr(ocr_engine=ocr_engine, progress_cb=progress_cb)
         self.step3_calculate_scores(progress_cb=progress_cb)
         self.step4_run_llm_judges(providers=providers, progress_cb=progress_cb)
         self.build_complete_section_json()
